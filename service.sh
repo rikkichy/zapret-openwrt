@@ -374,7 +374,12 @@ action_edit_lists() {
         pause_prompt; return
     fi
 
-    "$editor" "$target" </dev/tty
+    print_info "Editing: $target"
+    "$editor" "$target" </dev/tty >/dev/tty
+    printf "\n  File now has %d lines:\n" "$(wc -l < "$target")"
+    head -5 "$target" | sed 's/^/    /'
+    [ "$(wc -l < "$target")" -gt 5 ] && printf "    ...\n"
+    printf "\n"
     print_info "Restart zapret to apply list changes"
     pause_prompt
 }

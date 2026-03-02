@@ -2,9 +2,25 @@
 
 Adapted from [zapret-discord-youtube-windows](https://github.com/Flowseal/zapret-discord-youtube) for OpenWrt routers using `nfqws`.
 
-## Quick Start (Recommended)
+## One-Command Install (Recommended)
 
-Upload this entire `zapret-openwrt-discord-youtube` folder to your router (e.g. via `scp`) and run:
+Run this on your OpenWrt router via SSH:
+
+```sh
+uclient-fetch -O- https://raw.githubusercontent.com/rikkichy/zapret-openwrt/main/install.sh | sh
+```
+
+Alternative (if `uclient-fetch` is not available):
+
+```sh
+wget -O- https://raw.githubusercontent.com/rikkichy/zapret-openwrt/main/install.sh | sh
+```
+
+This downloads the repo, extracts it, and launches the interactive service manager which will guide you through setup.
+
+## Manual Install
+
+If you prefer, upload this entire folder to your router (e.g. via `scp`) and run:
 
 ```sh
 chmod +x service.sh
