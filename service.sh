@@ -54,25 +54,34 @@ detect_custom_d() {
 
 detect_init_system() {
     INIT_TYPE=""
+    INIT_SCRIPT=""
     if [ -x "/etc/init.d/zapret" ]; then
         INIT_TYPE="initd"
+        INIT_SCRIPT="/etc/init.d/zapret"
+    elif [ -n "$ZAPRET_BASE" ] && [ -x "$ZAPRET_BASE/init.d/openwrt/zapret" ]; then
+        INIT_TYPE="initd"
+        INIT_SCRIPT="$ZAPRET_BASE/init.d/openwrt/zapret"
+    elif [ -n "$ZAPRET_BASE" ] && [ -f "$ZAPRET_BASE/init.d/openwrt/zapret" ]; then
+        INIT_TYPE="initd"
+        INIT_SCRIPT="$ZAPRET_BASE/init.d/openwrt/zapret"
+        chmod +x "$INIT_SCRIPT"
     elif command -v systemctl >/dev/null 2>&1 && systemctl list-unit-files zapret.service >/dev/null 2>&1; then
         INIT_TYPE="systemd"
+    elif [ -n "$ZAPRET_BASE" ] && [ -x "$ZAPRET_BASE/init.d/sysv/zapret" ]; then
+        INIT_TYPE="sysv"
+        INIT_SCRIPT="$ZAPRET_BASE/init.d/sysv/zapret"
     fi
 }
 
 zapret_cmd() {
     # $1 = start|stop|restart
     case "$INIT_TYPE" in
-        initd)   /etc/init.d/zapret "$1" ;;
-        systemd) systemctl "$1" zapret ;;
+        initd|sysv) "$INIT_SCRIPT" "$1" ;;
+        systemd)    systemctl "$1" zapret ;;
         *)
-            if [ -x "$ZAPRET_BASE/init.d/sysv/zapret" ]; then
-                "$ZAPRET_BASE/init.d/sysv/zapret" "$1"
-            else
-                print_fail "Cannot find zapret init script"
-                return 1
-            fi
+            print_fail "Cannot find zapret init script"
+            print_info "Searched: /etc/init.d/zapret, $ZAPRET_BASE/init.d/openwrt/zapret"
+            return 1
             ;;
     esac
 }
