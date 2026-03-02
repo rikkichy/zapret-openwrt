@@ -290,15 +290,10 @@ action_status() {
     clear
     printf "\n  ${C_BOLD}ZAPRET STATUS${C_RESET}\n\n"
 
-    # Check if nfqws is running
-    if command -v pgrep >/dev/null 2>&1; then
-        if pgrep -x nfqws >/dev/null 2>&1; then
-            print_ok "nfqws is RUNNING ($(pgrep -cx nfqws) instance(s))"
-        else
-            print_fail "nfqws is NOT running"
-        fi
-    elif ps | grep -v grep | grep -q nfqws; then
-        print_ok "nfqws is RUNNING"
+    # Check if nfqws is running (ps w shows full command on busybox)
+    local nfq_count=$(ps | grep -c '[n]fqws')
+    if [ "$nfq_count" -gt 0 ] 2>/dev/null; then
+        print_ok "nfqws is RUNNING ($nfq_count instance(s))"
     else
         print_fail "nfqws is NOT running"
     fi
@@ -319,8 +314,8 @@ action_status() {
     # Service status via init system
     printf "\n"
     case "$INIT_TYPE" in
-        initd)
-            /etc/init.d/zapret status 2>/dev/null || true
+        initd|sysv)
+            "$INIT_SCRIPT" status 2>/dev/null || true
             ;;
         systemd)
             systemctl status zapret --no-pager -l 2>/dev/null | head -10
@@ -429,12 +424,11 @@ action_diagnostics() {
 
     # 6. nfqws process
     printf "\n"
-    if command -v pgrep >/dev/null 2>&1; then
-        if pgrep -x nfqws >/dev/null 2>&1; then
-            print_ok "nfqws process running ($(pgrep -cx nfqws) instance(s))"
-        else
-            print_fail "nfqws process not running"
-        fi
+    local nfq_count=$(ps | grep -c '[n]fqws')
+    if [ "$nfq_count" -gt 0 ] 2>/dev/null; then
+        print_ok "nfqws process running ($nfq_count instance(s))"
+    else
+        print_fail "nfqws process not running"
     fi
 
     # 7. Firewall rules
