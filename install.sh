@@ -29,9 +29,13 @@ rm -rf "$DEST" "$ARCHIVE"
 fetch "$URL" "$ARCHIVE"
 
 echo ">> Extracting..."
+rm -rf "$DEST"
 mkdir -p "$DEST"
-tar -xzf "$ARCHIVE" -C "$DEST" --strip-components=1
+tar -xzf "$ARCHIVE" -C /tmp
 rm -f "$ARCHIVE"
+# GitHub archives extract to reponame-branch/; move contents up
+mv /tmp/zapret-openwrt-main/* "$DEST"/
+rm -rf /tmp/zapret-openwrt-main
 
 echo ">> Launching service manager..."
 chmod +x "$DEST/service.sh"
