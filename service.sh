@@ -335,7 +335,17 @@ action_edit_lists() {
     fi
 
     local ipset_dir="$ZAPRET_BASE/ipset"
-    local editor="${EDITOR:-vi}"
+    local editor=""
+    if [ -n "$EDITOR" ]; then
+        editor="$EDITOR"
+    elif command -v nano >/dev/null 2>&1; then
+        editor="nano"
+    elif command -v vi >/dev/null 2>&1; then
+        editor="vi"
+    else
+        print_fail "No text editor found (nano or vi)"
+        pause_prompt; return
+    fi
 
     printf "  1. list-general.txt    (Discord, Cloudflare - %d domains)\n" \
         "$(wc -l < "$ipset_dir/list-general.txt" 2>/dev/null || echo 0)"
