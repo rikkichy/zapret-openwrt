@@ -1,0 +1,100 @@
+# custom.d script: Discord + YouTube DPI bypass for OpenWrt
+# Strategy: ALT2
+# Adapted from zapret-discord-youtube-windows general (ALT2).bat
+#
+# USAGE: copy this file to $ZAPRET_BASE/init.d/openwrt/custom.d/
+#        (or init.d/sysv/custom.d/ for non-OpenWrt Linux)
+#
+# LISTS: copy list-general.txt, list-google.txt, list-exclude.txt, ipset-exclude.txt
+#        to $ZAPRET_BASE/ipset/
+#
+# BINARIES: copy tls_clienthello_4pda_to.bin, tls_clienthello_max_ru.bin
+#           to $ZAPRET_BASE/files/fake/
+
+# override these in your config file if needed
+NFQWS_DSCYT_PORTS_TCP="${NFQWS_DSCYT_PORTS_TCP:-80,443,2053,2083,2087,2096,8443}"
+NFQWS_DSCYT_PORTS_UDP="${NFQWS_DSCYT_PORTS_UDP:-443,19294-19344,50000-50100}"
+NFQWS_DSCYT_TCP_PKT_OUT="${NFQWS_DSCYT_TCP_PKT_OUT:-$NFQWS_TCP_PKT_OUT}"
+NFQWS_DSCYT_TCP_PKT_IN="${NFQWS_DSCYT_TCP_PKT_IN:-$NFQWS_TCP_PKT_IN}"
+NFQWS_DSCYT_UDP_PKT_OUT="${NFQWS_DSCYT_UDP_PKT_OUT:-$NFQWS_UDP_PKT_OUT}"
+NFQWS_DSCYT_UDP_PKT_IN="${NFQWS_DSCYT_UDP_PKT_IN:-0}"
+
+NFQWS_DSCYT_OPT="${NFQWS_DSCYT_OPT:-
+ --filter-udp=443 --hostlist=$ZAPRET_BASE/ipset/list-general.txt --hostlist-exclude=$ZAPRET_BASE/ipset/list-exclude.txt --ipset-exclude=$ZAPRET_BASE/ipset/ipset-exclude.txt --dpi-desync=fake --dpi-desync-repeats=6 --dpi-desync-fake-quic=$ZAPRET_BASE/files/fake/quic_initial_www_google_com.bin --new
+ --filter-udp=19294-19344,50000-50100 --filter-l7=discord,stun --dpi-desync=fake --dpi-desync-repeats=6 --new
+ --filter-tcp=2053,2083,2087,2096,8443 --hostlist-domains=discord.media --dpi-desync=multisplit --dpi-desync-split-seqovl=652 --dpi-desync-split-pos=2 --dpi-desync-split-seqovl-pattern=$ZAPRET_BASE/files/fake/tls_clienthello_www_google_com.bin --new
+ --filter-tcp=443 --hostlist=$ZAPRET_BASE/ipset/list-google.txt --ip-id=zero --dpi-desync=multisplit --dpi-desync-split-seqovl=652 --dpi-desync-split-pos=2 --dpi-desync-split-seqovl-pattern=$ZAPRET_BASE/files/fake/tls_clienthello_www_google_com.bin --new
+ --filter-tcp=80,443 --hostlist=$ZAPRET_BASE/ipset/list-general.txt --hostlist-exclude=$ZAPRET_BASE/ipset/list-exclude.txt --ipset-exclude=$ZAPRET_BASE/ipset/ipset-exclude.txt --dpi-desync=multisplit --dpi-desync-split-seqovl=652 --dpi-desync-split-pos=2 --dpi-desync-split-seqovl-pattern=$ZAPRET_BASE/files/fake/tls_clienthello_www_google_com.bin}"
+
+alloc_dnum DNUM_DSCYT
+alloc_qnum QNUM_DSCYT
+
+zapret_custom_daemons()
+{
+	# $1 - 1 - run, 0 - stop
+
+	local opt="--qnum=$QNUM_DSCYT $NFQWS_DSCYT_OPT"
+	do_nfqws $1 $DNUM_DSCYT "$opt"
+}
+
+zapret_custom_firewall()
+{
+	# $1 - 1 - run, 0 - stop
+
+	local f4 f6
+	local ports_tcp=$(replace_char - : $NFQWS_DSCYT_PORTS_TCP)
+	local ports_udp=$(replace_char - : $NFQWS_DSCYT_PORTS_UDP)
+
+	[ -n "$ports_tcp" ] && {
+		[ -n "$NFQWS_DSCYT_TCP_PKT_OUT" -a "$NFQWS_DSCYT_TCP_PKT_OUT" != 0 ] && {
+			f4="-p tcp -m multiport --dports $ports_tcp $ipt_connbytes 1:$NFQWS_DSCYT_TCP_PKT_OUT"
+			f6="$f4"
+			fw_nfqws_post $1 "$f4" "$f6" $QNUM_DSCYT
+		}
+		[ -n "$NFQWS_DSCYT_TCP_PKT_IN" -a "$NFQWS_DSCYT_TCP_PKT_IN" != 0 ] && {
+			f4="-p tcp -m multiport --sports $ports_tcp $ipt_connbytes 1:$NFQWS_DSCYT_TCP_PKT_IN"
+			f6="$f4"
+			fw_nfqws_pre $1 "$f4" "$f6" $QNUM_DSCYT
+		}
+	}
+	[ -n "$ports_udp" ] && {
+		[ -n "$NFQWS_DSCYT_UDP_PKT_OUT" -a "$NFQWS_DSCYT_UDP_PKT_OUT" != 0 ] && {
+			f4="-p udp -m multiport --dports $ports_udp $ipt_connbytes 1:$NFQWS_DSCYT_UDP_PKT_OUT"
+			f6="$f4"
+			fw_nfqws_post $1 "$f4" "$f6" $QNUM_DSCYT
+		}
+		[ -n "$NFQWS_DSCYT_UDP_PKT_IN" -a "$NFQWS_DSCYT_UDP_PKT_IN" != 0 ] && {
+			f4="-p udp -m multiport --sports $ports_udp $ipt_connbytes 1:$NFQWS_DSCYT_UDP_PKT_IN"
+			f6="$f4"
+			fw_nfqws_pre $1 "$f4" "$f6" $QNUM_DSCYT
+		}
+	}
+}
+
+zapret_custom_firewall_nft()
+{
+	# stop logic is not required
+
+	local f
+
+	[ -n "$NFQWS_DSCYT_PORTS_TCP" ] && {
+		[ -n "$NFQWS_DSCYT_TCP_PKT_OUT" -a "$NFQWS_DSCYT_TCP_PKT_OUT" != 0 ] && {
+			f="tcp dport {$NFQWS_DSCYT_PORTS_TCP} $(nft_first_packets $NFQWS_DSCYT_TCP_PKT_OUT)"
+			nft_fw_nfqws_post $1 "$f" "$f" $QNUM_DSCYT
+		}
+		[ -n "$NFQWS_DSCYT_TCP_PKT_IN" -a "$NFQWS_DSCYT_TCP_PKT_IN" != 0 ] && {
+			f="tcp sport {$NFQWS_DSCYT_PORTS_TCP} $(nft_first_packets $NFQWS_DSCYT_TCP_PKT_IN)"
+			nft_fw_nfqws_pre $1 "$f" "$f" $QNUM_DSCYT
+		}
+	}
+	[ -n "$NFQWS_DSCYT_PORTS_UDP" ] && {
+		[ -n "$NFQWS_DSCYT_UDP_PKT_OUT" -a "$NFQWS_DSCYT_UDP_PKT_OUT" != 0 ] && {
+			f="udp dport {$NFQWS_DSCYT_PORTS_UDP} $(nft_first_packets $NFQWS_DSCYT_UDP_PKT_OUT)"
+			nft_fw_nfqws_post $1 "$f" "$f" $QNUM_DSCYT
+		}
+		[ -n "$NFQWS_DSCYT_UDP_PKT_IN" -a "$NFQWS_DSCYT_UDP_PKT_IN" != 0 ] && {
+			f="udp sport {$NFQWS_DSCYT_PORTS_UDP} $(nft_first_packets $NFQWS_DSCYT_UDP_PKT_IN)"
+			nft_fw_nfqws_pre $1 "$f" "$f" $QNUM_DSCYT
+		}
+	}
+}
