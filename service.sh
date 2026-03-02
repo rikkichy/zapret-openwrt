@@ -374,7 +374,7 @@ action_edit_lists() {
         pause_prompt; return
     fi
 
-    "$editor" "$target"
+    "$editor" "$target" </dev/tty
     print_info "Restart zapret to apply list changes"
     pause_prompt
 }
