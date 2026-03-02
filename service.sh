@@ -22,7 +22,7 @@ print_warn() { printf "${C_YELLOW}[?]${C_RESET} %s\n" "$1"; }
 print_info() { printf "${C_CYAN}::${C_RESET}  %s\n" "$1"; }
 
 pause_prompt() {
-    printf "\nPress Enter to continue..."; read dummy
+    printf "\nPress Enter to continue..."; read dummy </dev/tty
 }
 
 # --- Detect environment ---
@@ -185,7 +185,7 @@ action_install_strategy() {
     printf "\n  ${C_BOLD} 0.${C_RESET} Cancel\n"
 
     printf "\n  Select strategy (0-%d): " "$STRAT_COUNT"
-    read choice
+    read choice </dev/tty
 
     case "$choice" in
         ''|0) return ;;
@@ -222,7 +222,7 @@ action_install_strategy() {
     print_ok "Installed $(basename "$sel_file") -> $CUSTOM_D/"
 
     printf "\n  Restart zapret now? (y/N): "
-    read yn
+    read yn </dev/tty
     case "$yn" in
         y|Y)
             print_info "Restarting zapret..."
@@ -343,7 +343,7 @@ action_edit_lists() {
         "$(wc -l < "$ipset_dir/ipset-exclude.txt" 2>/dev/null || echo 0)"
     printf "\n  0. Back\n"
     printf "\n  Select list to edit (0-4): "
-    read choice
+    read choice </dev/tty
 
     local target=""
     case "$choice" in
@@ -497,7 +497,7 @@ first_run_check() {
     printf "\n  ${C_BOLD}FIRST-TIME SETUP${C_RESET}\n\n"
     print_info "No discord-youtube strategy detected."
     printf "  Run guided setup? (Y/n): "
-    read yn
+    read yn </dev/tty
     case "$yn" in
         n|N) return 0 ;;
     esac
@@ -515,7 +515,7 @@ first_run_check() {
     printf "  Tip: start with #1 (general). Switch later if needed.\n\n"
     list_strategies
     printf "\n  Select strategy (1-%d): " "$STRAT_COUNT"
-    read choice
+    read choice </dev/tty
 
     if [ -n "$choice" ] && [ "$choice" -ge 1 ] 2>/dev/null && [ "$choice" -le "$STRAT_COUNT" ] 2>/dev/null; then
         sel_file=$(get_strat_file "$choice")
@@ -528,7 +528,7 @@ first_run_check() {
             print_ok "Installed: $sel_name"
 
             printf "\n  Start zapret now? (Y/n): "
-            read yn2
+            read yn2 </dev/tty
             case "$yn2" in
                 n|N) ;;
                 *)
@@ -590,7 +590,7 @@ main_menu() {
         fi
 
         printf "  Select option (0-8): "
-        read menu_choice
+        read menu_choice </dev/tty
 
         case "$menu_choice" in
             1) action_install_strategy ;;
