@@ -1,17 +1,4 @@
-# custom.d script: Discord + YouTube DPI bypass for OpenWrt
-# Strategy: ALT4
-# Adapted from zapret-discord-youtube-windows general (ALT4).bat
-#
-# USAGE: copy this file to $ZAPRET_BASE/init.d/openwrt/custom.d/
-#        (or init.d/sysv/custom.d/ for non-OpenWrt Linux)
-#
-# LISTS: copy list-general.txt, list-google.txt, list-exclude.txt, ipset-exclude.txt, ipset-all.txt
-#        to $ZAPRET_BASE/ipset/
-#
-# BINARIES: copy tls_clienthello_4pda_to.bin, tls_clienthello_max_ru.bin, quic_initial_dbankcloud_ru.bin
-#           to $ZAPRET_BASE/files/fake/
 
-# override these in your config file if needed
 NFQWS_DSCYT_PORTS_TCP="${NFQWS_DSCYT_PORTS_TCP:-80,443,2053,2083,2087,2096,8443}"
 NFQWS_DSCYT_PORTS_UDP="${NFQWS_DSCYT_PORTS_UDP:-443,19294-19344,50000-50100}"
 NFQWS_DSCYT_TCP_PKT_OUT="${NFQWS_DSCYT_TCP_PKT_OUT:-$NFQWS_TCP_PKT_OUT}"
@@ -33,7 +20,6 @@ alloc_qnum QNUM_DSCYT
 
 zapret_custom_daemons()
 {
-	# $1 - 1 - run, 0 - stop
 
 	local opt="--qnum=$QNUM_DSCYT $NFQWS_DSCYT_OPT"
 	do_nfqws $1 $DNUM_DSCYT "$opt"
@@ -41,7 +27,6 @@ zapret_custom_daemons()
 
 zapret_custom_firewall()
 {
-	# $1 - 1 - run, 0 - stop
 
 	local f4 f6
 	local ports_tcp=$(replace_char - : $NFQWS_DSCYT_PORTS_TCP)
@@ -75,7 +60,6 @@ zapret_custom_firewall()
 
 zapret_custom_firewall_nft()
 {
-	# stop logic is not required
 
 	local f
 

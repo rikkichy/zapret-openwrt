@@ -1,8 +1,4 @@
-# English translations for service.sh
-# Each T_<key> is a translatable string. service.sh's t() looks them up.
-# Some strings contain printf placeholders (%s, %d) — preserve them when translating.
 
-# ---- main menu ----
 T_menu_title="ZAPRET DISCORD+YOUTUBE MANAGER"
 T_sec_strategy=":: STRATEGY"
 T_sec_service=":: SERVICE"
@@ -21,7 +17,6 @@ T_m_exit="Exit"
 T_select_option="Select option (0-9): "
 T_active="active"
 
-# ---- base zapret install ----
 T_base_missing="Base zapret not installed."
 T_base_install_q="Install zapret %s from bol-van/zapret? [Y/n]: "
 T_base_install_skip="Skipped. Install manually: %s"
@@ -35,7 +30,6 @@ T_installer_failed="install_easy.sh exited with an error"
 T_base_installed="zapret base installed"
 T_stopping_pre_setup="Stopping zapret (started by install_easy.sh) before guided setup..."
 
-# ---- first-time setup ----
 T_first_setup="FIRST-TIME SETUP"
 T_no_strategy_yet="No discord-youtube strategy detected."
 T_run_setup_q="Run guided setup? (Y/n): "
@@ -49,7 +43,6 @@ T_starting="Starting zapret..."
 T_done="Done"
 T_skipped_strategy="Skipped strategy install. Use menu option 1 later."
 
-# ---- uninstall ----
 T_uninstall_title="UNINSTALL zapret-openwrt"
 T_uninstall_will="This will:"
 T_uninstall_stop="  - Stop the running zapret service"
@@ -68,15 +61,12 @@ T_removed="Removed"
 T_nothing_remove="/tmp/zapret-openwrt not present (nothing to remove)"
 T_uninstall_done="Uninstall complete. Exiting."
 
-# ---- command registration ----
 T_cmd_registering="Registering 'zapret' command..."
 T_cmd_registered="Done — type 'zapret' anytime to open this menu"
 T_cmd_register_fail="Could not register 'zapret' command (need root / write access to /usr/bin and /usr/lib)"
 
-# ---- uninstall extras ----
 T_uninstall_unlink="  - Remove /usr/bin/zapret symlink and /usr/lib/zapret-openwrt"
 T_path_removed_fmt="Removed: %s"
 
-# ---- common ----
 T_press_enter="Press Enter to continue..."
 T_no_zapret_base="ZAPRET_BASE not found! Is zapret installed?"

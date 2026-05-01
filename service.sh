@@ -1,10 +1,7 @@
 #!/bin/sh
-# ZAPRET DISCORD+YOUTUBE SERVICE MANAGER for OpenWrt/Linux
-# POSIX sh compatible (works with ash/busybox on OpenWrt)
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# --- Colors ---
 if [ -t 1 ]; then
     C_GREEN='\033[0;32m'
     C_RED='\033[0;31m'
@@ -21,7 +18,6 @@ print_fail() { printf "${C_RED}[X]${C_RESET}  %s\n" "$1"; }
 print_warn() { printf "${C_YELLOW}[?]${C_RESET} %s\n" "$1"; }
 print_info() { printf "${C_CYAN}::${C_RESET}  %s\n" "$1"; }
 
-# --- Language / i18n ---
 LANG_CHOICE="en"
 LANG_FILE="$SCRIPT_DIR/.lang"
 
@@ -63,7 +59,6 @@ load_locale() {
 }
 
 t() {
-    # Look up T_<key> defined in locale/<lang>.sh; fall back to the key name
     eval "printf '%s' \"\${T_$1:-$1}\""
 }
 
@@ -71,7 +66,6 @@ pause_prompt() {
     printf "\n%s" "$(t press_enter)"; read dummy </dev/tty
 }
 
-# --- Detect environment ---
 detect_zapret_base() {
     if [ -n "$ZAPRET_BASE" ] && [ -d "$ZAPRET_BASE" ]; then
         return 0
@@ -82,7 +76,6 @@ detect_zapret_base() {
             return 0
         fi
     done
-    # not found
     ZAPRET_BASE=""
     return 1
 }
@@ -120,7 +113,6 @@ detect_init_system() {
 }
 
 fetch_url() {
-    # $1 = URL, $2 = output path
     if command -v uclient-fetch >/dev/null 2>&1; then
         uclient-fetch -O "$2" "$1"
     elif command -v curl >/dev/null 2>&1; then
@@ -132,14 +124,10 @@ fetch_url() {
     fi
 }
 
-# --- 'zapret' command registration ---
-# /tmp/zapret-openwrt vanishes on reboot, so copy the script tree to a
-# persistent location and create /usr/bin/zapret -> persistent service.sh
 PERSIST_DIR="/usr/lib/zapret-openwrt"
 SYMLINK_PATH="/usr/bin/zapret"
 
 register_command() {
-    # Only fire when running from /tmp (i.e. fresh install or update via install.sh)
     case "$SCRIPT_DIR" in
         /tmp/zapret-openwrt|/tmp/zapret-openwrt/*) ;;
         *) return 0 ;;
@@ -147,7 +135,6 @@ register_command() {
 
     print_info "$(t cmd_registering)"
 
-    # Copy script tree to a persistent location (idempotent — overwrites prior install)
     rm -rf "$PERSIST_DIR" 2>/dev/null
     if ! mkdir -p "$PERSIST_DIR" 2>/dev/null; then
         print_warn "$(t cmd_register_fail)"
@@ -159,7 +146,6 @@ register_command() {
     fi
     chmod +x "$PERSIST_DIR/service.sh" 2>/dev/null
 
-    # Create / refresh symlink
     if ! ln -sf "$PERSIST_DIR/service.sh" "$SYMLINK_PATH" 2>/dev/null; then
         print_warn "$(t cmd_register_fail)"
         return 1
@@ -192,7 +178,6 @@ install_zapret_base() {
         return 1
     fi
 
-    # Tarball extracts to zapret-vXX.XX/
     local extracted_dir
     extracted_dir=$(find "$tmpdir" -maxdepth 1 -type d ! -path "$tmpdir" | head -1)
     if [ -z "$extracted_dir" ] || [ ! -d "$extracted_dir" ]; then
@@ -221,13 +206,10 @@ install_zapret_base() {
     rm -rf "$tmpdir"
     print_ok "$(t base_installed)"
 
-    # Re-detect after install
     detect_zapret_base
     detect_custom_d
     detect_init_system
 
-    # install_easy.sh auto-starts zapret with its default config; stop it so
-    # the guided setup below can install our custom strategy and start fresh
     if [ -n "$INIT_TYPE" ]; then
         print_info "$(t stopping_pre_setup)"
         zapret_cmd stop >/dev/null 2>&1 || true
@@ -237,7 +219,6 @@ install_zapret_base() {
 }
 
 zapret_cmd() {
-    # $1 = start|stop|restart
     case "$INIT_TYPE" in
         initd|sysv) "$INIT_SCRIPT" "$1" ;;
         systemd)    systemctl "$1" zapret ;;
@@ -249,7 +230,6 @@ zapret_cmd() {
     esac
 }
 
-# --- Active strategy ---
 get_active_strategy() {
     ACTIVE_STRATEGY="none"
     ACTIVE_FILE=""
@@ -257,14 +237,12 @@ get_active_strategy() {
     for f in "$CUSTOM_D"/50-discord-youtube*; do
         [ -f "$f" ] || continue
         ACTIVE_FILE="$f"
-        # Read strategy name from comment "# Strategy: ..."
         ACTIVE_STRATEGY=$(sed -n 's/^# Strategy: *//p' "$f" | head -1)
         [ -z "$ACTIVE_STRATEGY" ] && ACTIVE_STRATEGY="$(basename "$f")"
         return
     done
 }
 
-# --- Strategy listing ---
 list_strategies() {
     STRAT_COUNT=0
     for f in "$SCRIPT_DIR/strategies"/50-discord-youtube*; do
@@ -287,7 +265,6 @@ get_strat_name() {
     eval "echo \"\$STRAT_NAME_$1\""
 }
 
-# --- Copy helper files ---
 copy_lists() {
     local src="$SCRIPT_DIR/lists"
     local dst="$ZAPRET_BASE/ipset"
@@ -328,10 +305,6 @@ copy_bins() {
     fi
 }
 
-# ============================================================
-#  MENU ACTIONS
-# ============================================================
-
 action_install_strategy() {
     clear
     printf "\n  ${C_BOLD}INSTALL STRATEGY${C_RESET}\n\n"
@@ -363,7 +336,6 @@ action_install_strategy() {
         ''|0) return ;;
     esac
 
-    # Validate number
     if ! [ "$choice" -ge 1 ] 2>/dev/null || ! [ "$choice" -le "$STRAT_COUNT" ] 2>/dev/null; then
         print_fail "Invalid choice"
         pause_prompt; return
@@ -380,16 +352,13 @@ action_install_strategy() {
     printf "\n"
     print_info "Installing strategy: $sel_name"
 
-    # Copy lists and bins first
     copy_lists
     copy_bins
 
-    # Remove old strategy scripts
     for f in "$CUSTOM_D"/50-discord-youtube*; do
         [ -f "$f" ] && rm -f "$f"
     done
 
-    # Install new strategy
     cp "$sel_file" "$CUSTOM_D/"
     print_ok "Installed $(basename "$sel_file") -> $CUSTOM_D/"
 
@@ -421,7 +390,6 @@ action_show_active() {
         print_ok "Strategy: $ACTIVE_STRATEGY"
         print_info "File: $ACTIVE_FILE"
         printf "\n  ${C_BOLD}nfqws options:${C_RESET}\n"
-        # Show the NFQWS_DSCYT_OPT block
         sed -n '/^NFQWS_DSCYT_OPT=/,/}"/p' "$ACTIVE_FILE" | sed 's/^/    /'
     fi
 
@@ -453,15 +421,14 @@ action_status() {
     clear
     printf "\n  ${C_BOLD}ZAPRET STATUS${C_RESET}\n\n"
 
-    # Check if nfqws is running (ps w shows full command on busybox)
-    local nfq_count=$(ps | grep -c '[n]fqws')
+    local nfq_count=$(pidof nfqws 2>/dev/null | wc -w | tr -d ' ')
+    [ -z "$nfq_count" ] && nfq_count=0
     if [ "$nfq_count" -gt 0 ] 2>/dev/null; then
         print_ok "nfqws is RUNNING ($nfq_count instance(s))"
     else
         print_fail "nfqws is NOT running"
     fi
 
-    # Active strategy
     get_active_strategy
     if [ "$ACTIVE_STRATEGY" = "none" ]; then
         print_warn "No discord-youtube strategy installed"
@@ -469,12 +436,10 @@ action_status() {
         print_ok "Active strategy: $ACTIVE_STRATEGY"
     fi
 
-    # Init type
     if [ -n "$INIT_TYPE" ]; then
         print_info "Init system: $INIT_TYPE"
     fi
 
-    # Service status via init system
     printf "\n"
     case "$INIT_TYPE" in
         initd|sysv)
@@ -551,7 +516,6 @@ action_diagnostics() {
     clear
     printf "\n  ${C_BOLD}DIAGNOSTICS${C_RESET}\n\n"
 
-    # 1. ZAPRET_BASE
     if [ -n "$ZAPRET_BASE" ]; then
         print_ok "ZAPRET_BASE: $ZAPRET_BASE"
     else
@@ -559,7 +523,6 @@ action_diagnostics() {
         pause_prompt; return
     fi
 
-    # 2. nfqws binary
     local nfqws_bin="$ZAPRET_BASE/nfq/nfqws"
     if [ -x "$nfqws_bin" ]; then
         print_ok "nfqws binary found: $nfqws_bin"
@@ -572,14 +535,12 @@ action_diagnostics() {
         fi
     fi
 
-    # 3. custom.d
     if [ -n "$CUSTOM_D" ]; then
         print_ok "custom.d: $CUSTOM_D"
     else
         print_fail "custom.d directory not found"
     fi
 
-    # 4. List files
     printf "\n"
     for f in list-general.txt list-google.txt list-exclude.txt ipset-exclude.txt ipset-all.txt; do
         if [ -f "$ZAPRET_BASE/ipset/$f" ]; then
@@ -590,7 +551,6 @@ action_diagnostics() {
         fi
     done
 
-    # 5. Fake .bin files
     printf "\n"
     for f in quic_initial_www_google_com.bin tls_clienthello_www_google_com.bin stun.bin tls_clienthello_4pda_to.bin tls_clienthello_max_ru.bin quic_initial_dbankcloud_ru.bin; do
         if [ -f "$ZAPRET_BASE/files/fake/$f" ]; then
@@ -600,16 +560,15 @@ action_diagnostics() {
         fi
     done
 
-    # 6. nfqws process
     printf "\n"
-    local nfq_count=$(ps | grep -c '[n]fqws')
+    local nfq_count=$(pidof nfqws 2>/dev/null | wc -w | tr -d ' ')
+    [ -z "$nfq_count" ] && nfq_count=0
     if [ "$nfq_count" -gt 0 ] 2>/dev/null; then
         print_ok "nfqws process running ($nfq_count instance(s))"
     else
         print_fail "nfqws process not running"
     fi
 
-    # 7. Firewall rules
     printf "\n"
     if command -v iptables >/dev/null 2>&1; then
         if iptables -t mangle -L -n 2>/dev/null | grep -q NFQUEUE; then
@@ -626,7 +585,6 @@ action_diagnostics() {
         fi
     fi
 
-    # 8. Active strategy
     printf "\n"
     get_active_strategy
     if [ "$ACTIVE_STRATEGY" != "none" ]; then
@@ -635,7 +593,6 @@ action_diagnostics() {
         print_warn "No discord-youtube strategy installed in custom.d"
     fi
 
-    # 9. Other custom.d scripts (potential conflicts)
     if [ -n "$CUSTOM_D" ]; then
         local others=""
         for f in "$CUSTOM_D"/*; do
@@ -679,7 +636,6 @@ action_uninstall() {
         print_info "$(t no_init)"
     fi
 
-    # Remove active discord-youtube strategy from custom.d/
     if [ -n "$CUSTOM_D" ] && [ -d "$CUSTOM_D" ]; then
         local removed_any=0
         for f in "$CUSTOM_D"/50-discord-youtube*; do
@@ -693,19 +649,16 @@ action_uninstall() {
         fi
     fi
 
-    # Remove the /usr/bin/zapret symlink
     if [ -L "$SYMLINK_PATH" ] || [ -e "$SYMLINK_PATH" ]; then
         rm -f "$SYMLINK_PATH" 2>/dev/null
         print_ok "$(printf "$(t path_removed_fmt)" "$SYMLINK_PATH")"
     fi
 
-    # Remove the persistent install (/usr/lib/zapret-openwrt)
     if [ -d "$PERSIST_DIR" ]; then
         rm -rf "$PERSIST_DIR" 2>/dev/null
         print_ok "$(printf "$(t path_removed_fmt)" "$PERSIST_DIR")"
     fi
 
-    # Remove the /tmp copy (if present)
     if [ -d "/tmp/zapret-openwrt" ]; then
         print_info "$(t removing)"
         rm -rf "/tmp/zapret-openwrt"
@@ -720,27 +673,20 @@ action_uninstall() {
     exit 0
 }
 
-# ============================================================
-#  FIRST-RUN SETUP
-# ============================================================
-
 first_run_check() {
     if [ -z "$ZAPRET_BASE" ]; then
-        return 0  # will show warning in menu
+        return 0
     fi
 
-    # Check if any discord-youtube strategy is installed
     get_active_strategy
     if [ "$ACTIVE_STRATEGY" != "none" ]; then
-        return 0  # already set up
+        return 0
     fi
 
-    # Check if lists are present
     if [ -f "$ZAPRET_BASE/ipset/list-general.txt" ]; then
-        return 0  # lists present, user just hasn't installed strategy
+        return 0
     fi
 
-    # Nothing installed — offer guided setup
     clear
     printf "\n  ${C_BOLD}%s${C_RESET}\n\n" "$(t first_setup)"
     print_info "$(t no_strategy_yet)"
@@ -792,10 +738,6 @@ first_run_check() {
 
     pause_prompt
 }
-
-# ============================================================
-#  MAIN MENU
-# ============================================================
 
 main_menu() {
     load_language
@@ -879,5 +821,4 @@ main_menu() {
     done
 }
 
-# --- Entry point ---
 main_menu
