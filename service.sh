@@ -1,6 +1,15 @@
 #!/bin/sh
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT_PATH="$0"
+while [ -L "$SCRIPT_PATH" ]; do
+    LINK="$(readlink "$SCRIPT_PATH")"
+    case "$LINK" in
+        /*) SCRIPT_PATH="$LINK" ;;
+        *)  SCRIPT_PATH="$(dirname "$SCRIPT_PATH")/$LINK" ;;
+    esac
+done
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+unset SCRIPT_PATH LINK
 
 if [ -t 1 ]; then
     C_GREEN='\033[0;32m'
