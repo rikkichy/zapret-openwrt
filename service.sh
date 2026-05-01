@@ -73,6 +73,78 @@ detect_init_system() {
     fi
 }
 
+fetch_url() {
+    # $1 = URL, $2 = output path
+    if command -v uclient-fetch >/dev/null 2>&1; then
+        uclient-fetch -O "$2" "$1"
+    elif command -v curl >/dev/null 2>&1; then
+        curl -sL -o "$2" "$1"
+    elif command -v wget >/dev/null 2>&1; then
+        wget -q -O "$2" "$1"
+    else
+        return 1
+    fi
+}
+
+ZAPRET_VERSION="v72.12"
+ZAPRET_TARBALL_URL="https://github.com/bol-van/zapret/releases/download/${ZAPRET_VERSION}/zapret-${ZAPRET_VERSION}-openwrt-embedded.tar.gz"
+
+install_zapret_base() {
+    local tmpdir="/tmp/zapret-base-install.$$"
+    local archive="$tmpdir/zapret.tar.gz"
+
+    print_info "Downloading zapret ${ZAPRET_VERSION} (openwrt-embedded)..."
+    rm -rf "$tmpdir"; mkdir -p "$tmpdir"
+
+    if ! fetch_url "$ZAPRET_TARBALL_URL" "$archive"; then
+        print_fail "Download failed (need uclient-fetch/curl/wget; or check network)"
+        rm -rf "$tmpdir"
+        return 1
+    fi
+
+    print_info "Extracting..."
+    if ! tar -xzf "$archive" -C "$tmpdir"; then
+        print_fail "Extraction failed"
+        rm -rf "$tmpdir"
+        return 1
+    fi
+
+    # Tarball extracts to zapret-vXX.XX/
+    local extracted_dir
+    extracted_dir=$(find "$tmpdir" -maxdepth 1 -type d ! -path "$tmpdir" | head -1)
+    if [ -z "$extracted_dir" ] || [ ! -d "$extracted_dir" ]; then
+        print_fail "Could not find extracted zapret directory"
+        rm -rf "$tmpdir"
+        return 1
+    fi
+
+    local installer="$extracted_dir/install_easy.sh"
+    if [ ! -f "$installer" ]; then
+        print_fail "install_easy.sh not found inside the package"
+        rm -rf "$tmpdir"
+        return 1
+    fi
+    [ -x "$installer" ] || chmod +x "$installer"
+
+    printf "\n"
+    print_info "Running install_easy.sh (will ask about IPv6, mode, firewall, etc.)"
+    printf "\n"
+    if ! "$installer" </dev/tty; then
+        print_fail "install_easy.sh exited with an error"
+        rm -rf "$tmpdir"
+        return 1
+    fi
+
+    rm -rf "$tmpdir"
+    print_ok "zapret base installed"
+
+    # Re-detect after install
+    detect_zapret_base
+    detect_custom_d
+    detect_init_system
+    return 0
+}
+
 zapret_cmd() {
     # $1 = start|stop|restart
     case "$INIT_TYPE" in
@@ -569,6 +641,24 @@ first_run_check() {
 
 main_menu() {
     detect_zapret_base
+
+    if [ -z "$ZAPRET_BASE" ]; then
+        printf "\n"
+        print_warn "Base zapret not installed."
+        printf "  Install zapret %s from bol-van/zapret? [Y/n]: " "$ZAPRET_VERSION"
+        read install_choice </dev/tty
+        case "$install_choice" in
+            ''|y|Y|yes|Yes|YES)
+                install_zapret_base || print_warn "zapret install did not complete"
+                pause_prompt
+                ;;
+            *)
+                print_info "Skipped. Install manually: $ZAPRET_TARBALL_URL"
+                pause_prompt
+                ;;
+        esac
+    fi
+
     detect_custom_d
     detect_init_system
 
