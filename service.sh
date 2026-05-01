@@ -21,8 +21,54 @@ print_fail() { printf "${C_RED}[X]${C_RESET}  %s\n" "$1"; }
 print_warn() { printf "${C_YELLOW}[?]${C_RESET} %s\n" "$1"; }
 print_info() { printf "${C_CYAN}::${C_RESET}  %s\n" "$1"; }
 
+# --- Language / i18n ---
+LANG_CHOICE="en"
+LANG_FILE="$SCRIPT_DIR/.lang"
+
+load_language() {
+    if [ -f "$LANG_FILE" ]; then
+        case "$(cat "$LANG_FILE" 2>/dev/null)" in
+            ru) LANG_CHOICE="ru" ;;
+            en) LANG_CHOICE="en" ;;
+        esac
+    fi
+}
+
+save_language() {
+    printf '%s\n' "$LANG_CHOICE" > "$LANG_FILE" 2>/dev/null || true
+}
+
+pick_language() {
+    [ -f "$LANG_FILE" ] && return 0
+    clear
+    printf "\n  ${C_BOLD}Выберите язык | Choose language${C_RESET}\n\n"
+    printf "     1. English\n"
+    printf "     2. Русский\n\n"
+    printf "  > "
+    read lang_choice </dev/tty
+    case "$lang_choice" in
+        2) LANG_CHOICE="ru" ;;
+        *) LANG_CHOICE="en" ;;
+    esac
+    save_language
+}
+
+load_locale() {
+    local f="$SCRIPT_DIR/locale/${LANG_CHOICE}.sh"
+    if [ -f "$f" ]; then
+        . "$f"
+    elif [ -f "$SCRIPT_DIR/locale/en.sh" ]; then
+        . "$SCRIPT_DIR/locale/en.sh"
+    fi
+}
+
+t() {
+    # Look up T_<key> defined in locale/<lang>.sh; fall back to the key name
+    eval "printf '%s' \"\${T_$1:-$1}\""
+}
+
 pause_prompt() {
-    printf "\nPress Enter to continue..."; read dummy </dev/tty
+    printf "\n%s" "$(t press_enter)"; read dummy </dev/tty
 }
 
 # --- Detect environment ---
@@ -93,18 +139,18 @@ install_zapret_base() {
     local tmpdir="/tmp/zapret-base-install.$$"
     local archive="$tmpdir/zapret.tar.gz"
 
-    print_info "Downloading zapret ${ZAPRET_VERSION} (openwrt-embedded)..."
+    print_info "$(printf "$(t base_downloading)" "$ZAPRET_VERSION")"
     rm -rf "$tmpdir"; mkdir -p "$tmpdir"
 
     if ! fetch_url "$ZAPRET_TARBALL_URL" "$archive"; then
-        print_fail "Download failed (need uclient-fetch/curl/wget; or check network)"
+        print_fail "$(t base_download_fail)"
         rm -rf "$tmpdir"
         return 1
     fi
 
-    print_info "Extracting..."
+    print_info "$(t extracting)"
     if ! tar -xzf "$archive" -C "$tmpdir"; then
-        print_fail "Extraction failed"
+        print_fail "$(t extract_fail)"
         rm -rf "$tmpdir"
         return 1
     fi
@@ -127,16 +173,16 @@ install_zapret_base() {
     [ -x "$installer" ] || chmod +x "$installer"
 
     printf "\n"
-    print_info "Running install_easy.sh (will ask about IPv6, mode, firewall, etc.)"
+    print_info "$(t running_installer)"
     printf "\n"
     if ! "$installer" </dev/tty; then
-        print_fail "install_easy.sh exited with an error"
+        print_fail "$(t installer_failed)"
         rm -rf "$tmpdir"
         return 1
     fi
 
     rm -rf "$tmpdir"
-    print_ok "zapret base installed"
+    print_ok "$(t base_installed)"
 
     # Re-detect after install
     detect_zapret_base
@@ -146,7 +192,7 @@ install_zapret_base() {
     # install_easy.sh auto-starts zapret with its default config; stop it so
     # the guided setup below can install our custom strategy and start fresh
     if [ -n "$INIT_TYPE" ]; then
-        print_info "Stopping zapret (started by install_easy.sh) before guided setup..."
+        print_info "$(t stopping_pre_setup)"
         zapret_cmd stop >/dev/null 2>&1 || true
     fi
 
@@ -572,38 +618,38 @@ action_diagnostics() {
 
 action_uninstall() {
     clear
-    printf "\n  ${C_BOLD}UNINSTALL zapret-openwrt${C_RESET}\n\n"
-    print_info "This will:"
-    print_info "  - Stop the running zapret service"
-    print_info "  - Remove /tmp/zapret-openwrt (the script directory)"
+    printf "\n  ${C_BOLD}%s${C_RESET}\n\n" "$(t uninstall_title)"
+    print_info "$(t uninstall_will)"
+    print_info "$(t uninstall_stop)"
+    print_info "$(t uninstall_wipe)"
     printf "\n"
-    print_warn "It will NOT touch /opt/zapret or any installed strategy in custom.d/"
-    printf "\n  Proceed? (y/N): "
+    print_warn "$(t uninstall_warn)"
+    printf "\n  %s" "$(t uninstall_proceed)"
     read yn </dev/tty
     case "$yn" in
         y|Y|yes|Yes|YES) ;;
-        *) print_info "Cancelled."; pause_prompt; return ;;
+        *) print_info "$(t cancelled)"; pause_prompt; return ;;
     esac
 
     printf "\n"
     if [ -n "$INIT_TYPE" ]; then
-        print_info "Stopping zapret..."
+        print_info "$(t stopping)"
         zapret_cmd stop >/dev/null 2>&1 || true
-        print_ok "Stopped"
+        print_ok "$(t stopped)"
     else
-        print_info "No init system detected; skipping service stop"
+        print_info "$(t no_init)"
     fi
 
     if [ -d "/tmp/zapret-openwrt" ]; then
-        print_info "Removing /tmp/zapret-openwrt..."
+        print_info "$(t removing)"
         rm -rf "/tmp/zapret-openwrt"
-        print_ok "Removed"
+        print_ok "$(t removed)"
     else
-        print_info "/tmp/zapret-openwrt not present (nothing to remove)"
+        print_info "$(t nothing_remove)"
     fi
 
     printf "\n"
-    print_ok "Uninstall complete. Exiting."
+    print_ok "$(t uninstall_done)"
     printf "\n"
     exit 0
 }
@@ -630,27 +676,27 @@ first_run_check() {
 
     # Nothing installed — offer guided setup
     clear
-    printf "\n  ${C_BOLD}FIRST-TIME SETUP${C_RESET}\n\n"
-    print_info "No discord-youtube strategy detected."
-    printf "  Run guided setup? (Y/n): "
+    printf "\n  ${C_BOLD}%s${C_RESET}\n\n" "$(t first_setup)"
+    print_info "$(t no_strategy_yet)"
+    printf "  %s" "$(t run_setup_q)"
     read yn </dev/tty
     case "$yn" in
         n|N) return 0 ;;
     esac
 
     printf "\n"
-    print_info "Step 1/3: Copying domain lists..."
+    print_info "$(t step1)"
     copy_lists
 
     printf "\n"
-    print_info "Step 2/3: Copying fake-packet binaries..."
+    print_info "$(t step2)"
     copy_bins
 
     printf "\n"
-    print_info "Step 3/3: Select a strategy to install\n"
-    printf "  Tip: start with #1 (general). Switch later if needed.\n\n"
+    printf "::  %s\n" "$(t step3)"
+    printf "  %s\n\n" "$(t tip_strategy)"
     list_strategies
-    printf "\n  Select strategy (1-%d): " "$STRAT_COUNT"
+    printf "\n  $(t select_strategy)" "$STRAT_COUNT"
     read choice </dev/tty
 
     if [ -n "$choice" ] && [ "$choice" -ge 1 ] 2>/dev/null && [ "$choice" -le "$STRAT_COUNT" ] 2>/dev/null; then
@@ -661,21 +707,21 @@ first_run_check() {
             done
             cp "$sel_file" "$CUSTOM_D/"
             sel_name=$(get_strat_name "$choice")
-            print_ok "Installed: $sel_name"
+            print_ok "$sel_name"
 
-            printf "\n  Start zapret now? (Y/n): "
+            printf "\n  %s" "$(t start_now_q)"
             read yn2 </dev/tty
             case "$yn2" in
                 n|N) ;;
                 *)
-                    print_info "Starting zapret..."
+                    print_info "$(t starting)"
                     zapret_cmd start
-                    print_ok "Done"
+                    print_ok "$(t done)"
                     ;;
             esac
         fi
     else
-        print_warn "Skipped strategy install. Use menu option 1 later."
+        print_warn "$(t skipped_strategy)"
     fi
 
     pause_prompt
@@ -686,20 +732,24 @@ first_run_check() {
 # ============================================================
 
 main_menu() {
+    load_language
+    pick_language
+    load_locale
+
     detect_zapret_base
 
     if [ -z "$ZAPRET_BASE" ]; then
         printf "\n"
-        print_warn "Base zapret not installed."
-        printf "  Install zapret %s from bol-van/zapret? [Y/n]: " "$ZAPRET_VERSION"
+        print_warn "$(t base_missing)"
+        printf "  $(t base_install_q)" "$ZAPRET_VERSION"
         read install_choice </dev/tty
         case "$install_choice" in
             ''|y|Y|yes|Yes|YES)
-                install_zapret_base || print_warn "zapret install did not complete"
+                install_zapret_base || print_warn "$(t base_install_fail)"
                 pause_prompt
                 ;;
             *)
-                print_info "Skipped. Install manually: $ZAPRET_TARBALL_URL"
+                print_info "$(printf "$(t base_install_skip)" "$ZAPRET_TARBALL_URL")"
                 pause_prompt
                 ;;
         esac
@@ -715,36 +765,36 @@ main_menu() {
         get_active_strategy
 
         printf "\n"
-        printf "  ${C_BOLD}ZAPRET DISCORD+YOUTUBE MANAGER${C_RESET}\n"
+        printf "  ${C_BOLD}%s${C_RESET}\n" "$(t menu_title)"
         printf "  ────────────────────────────────\n"
         printf "\n"
-        printf "  ${C_CYAN}:: STRATEGY${C_RESET}\n"
-        printf "     1. Install Strategy         ${C_CYAN}[%s]${C_RESET}\n" "$ACTIVE_STRATEGY"
-        printf "     2. Show Active Strategy\n"
+        printf "  ${C_CYAN}%s${C_RESET}\n" "$(t sec_strategy)"
+        printf "     1. %s         ${C_CYAN}[%s]${C_RESET}\n" "$(t m_install)" "$ACTIVE_STRATEGY"
+        printf "     2. %s\n" "$(t m_show_active)"
         printf "\n"
-        printf "  ${C_CYAN}:: SERVICE${C_RESET}\n"
-        printf "     3. Start zapret\n"
-        printf "     4. Stop zapret\n"
-        printf "     5. Restart zapret\n"
-        printf "     6. Check Status\n"
+        printf "  ${C_CYAN}%s${C_RESET}\n" "$(t sec_service)"
+        printf "     3. %s\n" "$(t m_start)"
+        printf "     4. %s\n" "$(t m_stop)"
+        printf "     5. %s\n" "$(t m_restart)"
+        printf "     6. %s\n" "$(t m_status)"
         printf "\n"
-        printf "  ${C_CYAN}:: LISTS${C_RESET}\n"
-        printf "     7. Edit Domain Lists\n"
+        printf "  ${C_CYAN}%s${C_RESET}\n" "$(t sec_lists)"
+        printf "     7. %s\n" "$(t m_lists)"
         printf "\n"
-        printf "  ${C_CYAN}:: TOOLS${C_RESET}\n"
-        printf "     8. Run Diagnostics\n"
-        printf "     9. Uninstall zapret-openwrt\n"
+        printf "  ${C_CYAN}%s${C_RESET}\n" "$(t sec_tools)"
+        printf "     8. %s\n" "$(t m_diag)"
+        printf "     9. %s\n" "$(t m_uninstall)"
         printf "\n"
         printf "  ────────────────────────────────\n"
-        printf "     0. Exit\n"
+        printf "     0. %s\n" "$(t m_exit)"
         printf "\n"
 
         if [ -z "$ZAPRET_BASE" ]; then
-            print_fail "ZAPRET_BASE not found! Is zapret installed?"
+            print_fail "$(t no_zapret_base)"
             printf "\n"
         fi
 
-        printf "  Select option (0-9): "
+        printf "  %s" "$(t select_option)"
         read menu_choice </dev/tty
 
         case "$menu_choice" in

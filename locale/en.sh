@@ -1,0 +1,70 @@
+# English translations for service.sh
+# Each T_<key> is a translatable string. service.sh's t() looks them up.
+# Some strings contain printf placeholders (%s, %d) — preserve them when translating.
+
+# ---- main menu ----
+T_menu_title="ZAPRET DISCORD+YOUTUBE MANAGER"
+T_sec_strategy=":: STRATEGY"
+T_sec_service=":: SERVICE"
+T_sec_lists=":: LISTS"
+T_sec_tools=":: TOOLS"
+T_m_install="Install Strategy"
+T_m_show_active="Show Active Strategy"
+T_m_start="Start zapret"
+T_m_stop="Stop zapret"
+T_m_restart="Restart zapret"
+T_m_status="Check Status"
+T_m_lists="Edit Domain Lists"
+T_m_diag="Run Diagnostics"
+T_m_uninstall="Uninstall zapret-openwrt"
+T_m_exit="Exit"
+T_select_option="Select option (0-9): "
+T_active="active"
+
+# ---- base zapret install ----
+T_base_missing="Base zapret not installed."
+T_base_install_q="Install zapret %s from bol-van/zapret? [Y/n]: "
+T_base_install_skip="Skipped. Install manually: %s"
+T_base_install_fail="zapret install did not complete"
+T_base_downloading="Downloading zapret %s (openwrt-embedded)..."
+T_base_download_fail="Download failed (need uclient-fetch/curl/wget; or check network)"
+T_extracting="Extracting..."
+T_extract_fail="Extraction failed"
+T_running_installer="Running install_easy.sh (will ask about IPv6, mode, firewall, etc.)"
+T_installer_failed="install_easy.sh exited with an error"
+T_base_installed="zapret base installed"
+T_stopping_pre_setup="Stopping zapret (started by install_easy.sh) before guided setup..."
+
+# ---- first-time setup ----
+T_first_setup="FIRST-TIME SETUP"
+T_no_strategy_yet="No discord-youtube strategy detected."
+T_run_setup_q="Run guided setup? (Y/n): "
+T_step1="Step 1/3: Copying domain lists..."
+T_step2="Step 2/3: Copying fake-packet binaries..."
+T_step3="Step 3/3: Select a strategy to install"
+T_tip_strategy="Tip: start with #1 (general). Switch later if needed."
+T_select_strategy="Select strategy (1-%d): "
+T_start_now_q="Start zapret now? (Y/n): "
+T_starting="Starting zapret..."
+T_done="Done"
+T_skipped_strategy="Skipped strategy install. Use menu option 1 later."
+
+# ---- uninstall ----
+T_uninstall_title="UNINSTALL zapret-openwrt"
+T_uninstall_will="This will:"
+T_uninstall_stop="  - Stop the running zapret service"
+T_uninstall_wipe="  - Remove /tmp/zapret-openwrt (the script directory)"
+T_uninstall_warn="It will NOT touch /opt/zapret or any installed strategy in custom.d/"
+T_uninstall_proceed="Proceed? (y/N): "
+T_cancelled="Cancelled."
+T_stopping="Stopping zapret..."
+T_stopped="Stopped"
+T_no_init="No init system detected; skipping service stop"
+T_removing="Removing /tmp/zapret-openwrt..."
+T_removed="Removed"
+T_nothing_remove="/tmp/zapret-openwrt not present (nothing to remove)"
+T_uninstall_done="Uninstall complete. Exiting."
+
+# ---- common ----
+T_press_enter="Press Enter to continue..."
+T_no_zapret_base="ZAPRET_BASE not found! Is zapret installed?"
