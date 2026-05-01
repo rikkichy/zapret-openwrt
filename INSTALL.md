@@ -43,15 +43,17 @@ cp lists/list-general.txt   $ZAPRET_BASE/ipset/
 cp lists/list-google.txt    $ZAPRET_BASE/ipset/
 cp lists/list-exclude.txt   $ZAPRET_BASE/ipset/
 cp lists/ipset-exclude.txt  $ZAPRET_BASE/ipset/
+cp lists/ipset-all.txt      $ZAPRET_BASE/ipset/
 ```
 
 ### 2. Copy extra fake-packet binaries
 
-These two files are not included in the standard zapret distribution:
+These files are not included in the standard zapret distribution:
 
 ```sh
-cp files/fake/tls_clienthello_4pda_to.bin  $ZAPRET_BASE/files/fake/
-cp files/fake/tls_clienthello_max_ru.bin   $ZAPRET_BASE/files/fake/
+cp files/fake/tls_clienthello_4pda_to.bin    $ZAPRET_BASE/files/fake/
+cp files/fake/tls_clienthello_max_ru.bin     $ZAPRET_BASE/files/fake/
+cp files/fake/quic_initial_dbankcloud_ru.bin $ZAPRET_BASE/files/fake/
 ```
 
 The following files are already present in zapret (no copy needed):
@@ -137,10 +139,12 @@ cp strategies/50-discord-youtube-alt1 $ZAPRET_BASE/init.d/openwrt/custom.d/
 Each strategy runs a single `nfqws` daemon with a multi-rule filter chain:
 
 1. **QUIC UDP 443** - Fake packets for Discord/Cloudflare QUIC traffic (hostlist-filtered)
-2. **Discord Voice UDP 19294-50100** - Fake packets for Discord voice and STUN
+2. **Discord Voice UDP 19294-50100** - Fake packets for Discord voice and STUN with custom dbankcloud QUIC fake
 3. **Discord.media TCP 2053,2083,2087,2096,8443** - Desync for Discord media on Cloudflare ports
 4. **YouTube TCP 443** - Desync for YouTube/Google video traffic
 5. **General TCP 80,443** - Desync for Discord/Cloudflare web traffic (hostlist-filtered)
+6. **Catch-all UDP 443** - Same desync as rule 1 but matched by IP via `ipset-all.txt` (hostname-less fallback)
+7. **Catch-all TCP 80,443,8443** - Same desync as rule 5 but matched by IP via `ipset-all.txt`
 
 Firewall rules (iptables or nftables) redirect matching packets to NFQUEUE, where `nfqws` applies the desync techniques.
 
@@ -184,4 +188,5 @@ NFQWS_DSCYT_PORTS_UDP="443"
 | `--wf-udp=...` | iptables/nftables rules (in firewall functions) |
 | `%BIN%file.bin` | `$ZAPRET_BASE/files/fake/file.bin` |
 | `%LISTS%list.txt` | `$ZAPRET_BASE/ipset/list.txt` |
+| `--dpi-desync-fake-tls=^!` (escaped `!` for cmd.exe) | `--dpi-desync-fake-tls=!` (no escape needed) |
 | All other flags | Identical between winws and nfqws |

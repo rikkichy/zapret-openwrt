@@ -129,7 +129,7 @@ copy_lists() {
     local src="$SCRIPT_DIR/lists"
     local dst="$ZAPRET_BASE/ipset"
     local copied=0
-    for f in list-general.txt list-google.txt list-exclude.txt ipset-exclude.txt; do
+    for f in list-general.txt list-google.txt list-exclude.txt ipset-exclude.txt ipset-all.txt; do
         if [ -f "$src/$f" ]; then
             if [ ! -f "$dst/$f" ]; then
                 cp "$src/$f" "$dst/$f"
@@ -149,7 +149,7 @@ copy_bins() {
     local src="$SCRIPT_DIR/files/fake"
     local dst="$ZAPRET_BASE/files/fake"
     local copied=0
-    for f in tls_clienthello_4pda_to.bin tls_clienthello_max_ru.bin; do
+    for f in tls_clienthello_4pda_to.bin tls_clienthello_max_ru.bin quic_initial_dbankcloud_ru.bin; do
         if [ -f "$src/$f" ]; then
             if [ ! -f "$dst/$f" ]; then
                 cp "$src/$f" "$dst/$f"
@@ -418,7 +418,7 @@ action_diagnostics() {
 
     # 4. List files
     printf "\n"
-    for f in list-general.txt list-google.txt list-exclude.txt ipset-exclude.txt; do
+    for f in list-general.txt list-google.txt list-exclude.txt ipset-exclude.txt ipset-all.txt; do
         if [ -f "$ZAPRET_BASE/ipset/$f" ]; then
             local count=$(wc -l < "$ZAPRET_BASE/ipset/$f" 2>/dev/null)
             print_ok "$f ($count entries)"
@@ -429,7 +429,7 @@ action_diagnostics() {
 
     # 5. Fake .bin files
     printf "\n"
-    for f in quic_initial_www_google_com.bin tls_clienthello_www_google_com.bin stun.bin tls_clienthello_4pda_to.bin tls_clienthello_max_ru.bin; do
+    for f in quic_initial_www_google_com.bin tls_clienthello_www_google_com.bin stun.bin tls_clienthello_4pda_to.bin tls_clienthello_max_ru.bin quic_initial_dbankcloud_ru.bin; do
         if [ -f "$ZAPRET_BASE/files/fake/$f" ]; then
             print_ok "$f"
         else
