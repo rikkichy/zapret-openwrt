@@ -142,6 +142,14 @@ install_zapret_base() {
     detect_zapret_base
     detect_custom_d
     detect_init_system
+
+    # install_easy.sh auto-starts zapret with its default config; stop it so
+    # the guided setup below can install our custom strategy and start fresh
+    if [ -n "$INIT_TYPE" ]; then
+        print_info "Stopping zapret (started by install_easy.sh) before guided setup..."
+        zapret_cmd stop >/dev/null 2>&1 || true
+    fi
+
     return 0
 }
 
@@ -562,6 +570,44 @@ action_diagnostics() {
     pause_prompt
 }
 
+action_uninstall() {
+    clear
+    printf "\n  ${C_BOLD}UNINSTALL zapret-openwrt${C_RESET}\n\n"
+    print_info "This will:"
+    print_info "  - Stop the running zapret service"
+    print_info "  - Remove /tmp/zapret-openwrt (the script directory)"
+    printf "\n"
+    print_warn "It will NOT touch /opt/zapret or any installed strategy in custom.d/"
+    printf "\n  Proceed? (y/N): "
+    read yn </dev/tty
+    case "$yn" in
+        y|Y|yes|Yes|YES) ;;
+        *) print_info "Cancelled."; pause_prompt; return ;;
+    esac
+
+    printf "\n"
+    if [ -n "$INIT_TYPE" ]; then
+        print_info "Stopping zapret..."
+        zapret_cmd stop >/dev/null 2>&1 || true
+        print_ok "Stopped"
+    else
+        print_info "No init system detected; skipping service stop"
+    fi
+
+    if [ -d "/tmp/zapret-openwrt" ]; then
+        print_info "Removing /tmp/zapret-openwrt..."
+        rm -rf "/tmp/zapret-openwrt"
+        print_ok "Removed"
+    else
+        print_info "/tmp/zapret-openwrt not present (nothing to remove)"
+    fi
+
+    printf "\n"
+    print_ok "Uninstall complete. Exiting."
+    printf "\n"
+    exit 0
+}
+
 # ============================================================
 #  FIRST-RUN SETUP
 # ============================================================
@@ -687,6 +733,7 @@ main_menu() {
         printf "\n"
         printf "  ${C_CYAN}:: TOOLS${C_RESET}\n"
         printf "     8. Run Diagnostics\n"
+        printf "     9. Uninstall zapret-openwrt\n"
         printf "\n"
         printf "  ────────────────────────────────\n"
         printf "     0. Exit\n"
@@ -697,7 +744,7 @@ main_menu() {
             printf "\n"
         fi
 
-        printf "  Select option (0-8): "
+        printf "  Select option (0-9): "
         read menu_choice </dev/tty
 
         case "$menu_choice" in
@@ -709,6 +756,7 @@ main_menu() {
             6) action_status ;;
             7) action_edit_lists ;;
             8) action_diagnostics ;;
+            9) action_uninstall ;;
             0|q|Q) printf "\n"; exit 0 ;;
         esac
     done
