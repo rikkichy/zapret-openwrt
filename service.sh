@@ -190,14 +190,14 @@ install_zapret_base() {
     local extracted_dir
     extracted_dir=$(find "$tmpdir" -maxdepth 1 -type d ! -path "$tmpdir" | head -1)
     if [ -z "$extracted_dir" ] || [ ! -d "$extracted_dir" ]; then
-        print_fail "Could not find extracted zapret directory"
+        print_fail "$(t extracted_dir_missing)"
         rm -rf "$tmpdir"
         return 1
     fi
 
     local installer="$extracted_dir/install_easy.sh"
     if [ ! -f "$installer" ]; then
-        print_fail "install_easy.sh not found inside the package"
+        print_fail "$(t installer_missing)"
         rm -rf "$tmpdir"
         return 1
     fi
@@ -232,8 +232,8 @@ zapret_cmd() {
         initd|sysv) "$INIT_SCRIPT" "$1" ;;
         systemd)    systemctl "$1" zapret ;;
         *)
-            print_fail "Cannot find zapret init script"
-            print_info "Searched: /etc/init.d/zapret, $ZAPRET_BASE/init.d/openwrt/zapret"
+            print_fail "$(t init_script_missing)"
+            print_info "$(printf "$(t init_searched_fmt)" "$ZAPRET_BASE")"
             return 1
             ;;
     esac
@@ -282,15 +282,15 @@ copy_lists() {
         if [ -f "$src/$f" ]; then
             if [ ! -f "$dst/$f" ]; then
                 cp "$src/$f" "$dst/$f"
-                print_ok "Copied $f -> $dst/"
+                print_ok "$(printf "$(t copied_fmt)" "$f" "$dst/")"
                 copied=$((copied + 1))
             fi
         else
-            print_warn "Source $f not found in $src/"
+            print_warn "$(printf "$(t source_missing_fmt)" "$f" "$src/")"
         fi
     done
     if [ "$copied" -eq 0 ]; then
-        print_info "All list files already present"
+        print_info "$(t all_lists_present)"
     fi
 }
 
@@ -302,43 +302,43 @@ copy_bins() {
         if [ -f "$src/$f" ]; then
             if [ ! -f "$dst/$f" ]; then
                 cp "$src/$f" "$dst/$f"
-                print_ok "Copied $f -> $dst/"
+                print_ok "$(printf "$(t copied_fmt)" "$f" "$dst/")"
                 copied=$((copied + 1))
             fi
         else
-            print_warn "Source $f not found in $src/"
+            print_warn "$(printf "$(t source_missing_fmt)" "$f" "$src/")"
         fi
     done
     if [ "$copied" -eq 0 ]; then
-        print_info "All .bin files already present"
+        print_info "$(t all_bins_present)"
     fi
 }
 
 action_install_strategy() {
     clear
-    printf "\n  ${C_BOLD}INSTALL STRATEGY${C_RESET}\n\n"
+    printf "\n  ${C_BOLD}%s${C_RESET}\n\n" "$(t h_install)"
 
     if [ -z "$ZAPRET_BASE" ]; then
-        print_fail "ZAPRET_BASE not detected. Is zapret installed?"
+        print_fail "$(t zb_not_detected)"
         pause_prompt; return
     fi
     if [ -z "$CUSTOM_D" ]; then
-        print_fail "custom.d directory not found in $ZAPRET_BASE"
+        print_fail "$(printf "$(t customd_missing_in_fmt)" "$ZAPRET_BASE")"
         pause_prompt; return
     fi
 
     if [ ! -d "$SCRIPT_DIR/strategies" ]; then
-        print_fail "strategies/ directory not found next to this script"
+        print_fail "$(t strategies_dir_missing)"
         pause_prompt; return
     fi
 
     get_active_strategy
-    printf "  Current active strategy: ${C_CYAN}%s${C_RESET}\n\n" "$ACTIVE_STRATEGY"
+    printf "  %s${C_CYAN}%s${C_RESET}\n\n" "$(t current_active_fmt)" "$ACTIVE_STRATEGY"
 
     list_strategies
-    printf "\n  ${C_BOLD} 0.${C_RESET} Cancel\n"
+    printf "\n  ${C_BOLD} 0.${C_RESET} %s\n" "$(t cancel)"
 
-    printf "\n  Select strategy (0-%d): " "$STRAT_COUNT"
+    printf "\n  $(t select_strategy_with_zero)" "$STRAT_COUNT"
     read choice </dev/tty
 
     case "$choice" in
@@ -346,7 +346,7 @@ action_install_strategy() {
     esac
 
     if ! [ "$choice" -ge 1 ] 2>/dev/null || ! [ "$choice" -le "$STRAT_COUNT" ] 2>/dev/null; then
-        print_fail "Invalid choice"
+        print_fail "$(t invalid_choice)"
         pause_prompt; return
     fi
 
@@ -354,12 +354,12 @@ action_install_strategy() {
     sel_name=$(get_strat_name "$choice")
 
     if [ -z "$sel_file" ] || [ ! -f "$sel_file" ]; then
-        print_fail "Invalid choice"
+        print_fail "$(t invalid_choice)"
         pause_prompt; return
     fi
 
     printf "\n"
-    print_info "Installing strategy: $sel_name"
+    print_info "$(printf "$(t installing_strategy_fmt)" "$sel_name")"
 
     copy_lists
     copy_bins
@@ -369,15 +369,15 @@ action_install_strategy() {
     done
 
     cp "$sel_file" "$CUSTOM_D/"
-    print_ok "Installed $(basename "$sel_file") -> $CUSTOM_D/"
+    print_ok "$(printf "$(t installed_to_fmt)" "$(basename "$sel_file")" "$CUSTOM_D/")"
 
-    printf "\n  Restart zapret now? (y/N): "
+    printf "\n  %s" "$(t restart_q)"
     read yn </dev/tty
     case "$yn" in
         y|Y)
-            print_info "Restarting zapret..."
+            print_info "$(t restarting)"
             zapret_cmd restart
-            print_ok "Done"
+            print_ok "$(t done)"
             ;;
     esac
 
@@ -386,19 +386,19 @@ action_install_strategy() {
 
 action_show_active() {
     clear
-    printf "\n  ${C_BOLD}ACTIVE STRATEGY${C_RESET}\n\n"
+    printf "\n  ${C_BOLD}%s${C_RESET}\n\n" "$(t h_active)"
 
     get_active_strategy
 
     if [ "$ACTIVE_STRATEGY" = "none" ]; then
-        print_warn "No discord-youtube strategy installed"
+        print_warn "$(t no_strategy_installed)"
         if [ -n "$CUSTOM_D" ]; then
-            print_info "custom.d dir: $CUSTOM_D"
+            print_info "$(printf "$(t customd_dir_fmt)" "$CUSTOM_D")"
         fi
     else
-        print_ok "Strategy: $ACTIVE_STRATEGY"
-        print_info "File: $ACTIVE_FILE"
-        printf "\n  ${C_BOLD}nfqws options:${C_RESET}\n"
+        print_ok "$(printf "$(t strategy_fmt)" "$ACTIVE_STRATEGY")"
+        print_info "$(printf "$(t file_fmt)" "$ACTIVE_FILE")"
+        printf "\n  ${C_BOLD}%s${C_RESET}\n" "$(t nfqws_options)"
         sed -n '/^NFQWS_DSCYT_OPT=/,/}"/p' "$ACTIVE_FILE" | sed 's/^/    /'
     fi
 
@@ -407,46 +407,46 @@ action_show_active() {
 
 action_start() {
     clear
-    print_info "Starting zapret..."
+    print_info "$(t starting)"
     zapret_cmd start
     pause_prompt
 }
 
 action_stop() {
     clear
-    print_info "Stopping zapret..."
+    print_info "$(t stopping)"
     zapret_cmd stop
     pause_prompt
 }
 
 action_restart() {
     clear
-    print_info "Restarting zapret..."
+    print_info "$(t restarting)"
     zapret_cmd restart
     pause_prompt
 }
 
 action_status() {
     clear
-    printf "\n  ${C_BOLD}ZAPRET STATUS${C_RESET}\n\n"
+    printf "\n  ${C_BOLD}%s${C_RESET}\n\n" "$(t h_status)"
 
     local nfq_count=$(pidof nfqws 2>/dev/null | wc -w | tr -d ' ')
     [ -z "$nfq_count" ] && nfq_count=0
     if [ "$nfq_count" -gt 0 ] 2>/dev/null; then
-        print_ok "nfqws is RUNNING ($nfq_count instance(s))"
+        print_ok "$(printf "$(t nfqws_running_fmt)" "$nfq_count")"
     else
-        print_fail "nfqws is NOT running"
+        print_fail "$(t nfqws_not_running)"
     fi
 
     get_active_strategy
     if [ "$ACTIVE_STRATEGY" = "none" ]; then
-        print_warn "No discord-youtube strategy installed"
+        print_warn "$(t no_strategy_installed)"
     else
-        print_ok "Active strategy: $ACTIVE_STRATEGY"
+        print_ok "$(printf "$(t active_strategy_fmt)" "$ACTIVE_STRATEGY")"
     fi
 
     if [ -n "$INIT_TYPE" ]; then
-        print_info "Init system: $INIT_TYPE"
+        print_info "$(printf "$(t init_system_fmt)" "$INIT_TYPE")"
     fi
 
     printf "\n"
@@ -464,10 +464,10 @@ action_status() {
 
 action_edit_lists() {
     clear
-    printf "\n  ${C_BOLD}EDIT DOMAIN LISTS${C_RESET}\n\n"
+    printf "\n  ${C_BOLD}%s${C_RESET}\n\n" "$(t h_lists)"
 
     if [ -z "$ZAPRET_BASE" ]; then
-        print_fail "ZAPRET_BASE not detected"
+        print_fail "$(t zb_not_detected)"
         pause_prompt; return
     fi
 
@@ -480,20 +480,16 @@ action_edit_lists() {
     elif command -v vi >/dev/null 2>&1; then
         editor="vi"
     else
-        print_fail "No text editor found (nano or vi)"
+        print_fail "$(t no_editor)"
         pause_prompt; return
     fi
 
-    printf "  1. list-general.txt    (Discord, Cloudflare - %d domains)\n" \
-        "$(wc -l < "$ipset_dir/list-general.txt" 2>/dev/null || echo 0)"
-    printf "  2. list-google.txt     (YouTube, Google     - %d domains)\n" \
-        "$(wc -l < "$ipset_dir/list-google.txt" 2>/dev/null || echo 0)"
-    printf "  3. list-exclude.txt    (Excluded domains    - %d domains)\n" \
-        "$(wc -l < "$ipset_dir/list-exclude.txt" 2>/dev/null || echo 0)"
-    printf "  4. ipset-exclude.txt   (Excluded IPs        - %d entries)\n" \
-        "$(wc -l < "$ipset_dir/ipset-exclude.txt" 2>/dev/null || echo 0)"
-    printf "\n  0. Back\n"
-    printf "\n  Select list to edit (0-4): "
+    printf "$(t list_general_fmt)\n"  "$(wc -l < "$ipset_dir/list-general.txt"  2>/dev/null || echo 0)"
+    printf "$(t list_google_fmt)\n"   "$(wc -l < "$ipset_dir/list-google.txt"   2>/dev/null || echo 0)"
+    printf "$(t list_exclude_fmt)\n"  "$(wc -l < "$ipset_dir/list-exclude.txt"  2>/dev/null || echo 0)"
+    printf "$(t ipset_exclude_fmt)\n" "$(wc -l < "$ipset_dir/ipset-exclude.txt" 2>/dev/null || echo 0)"
+    printf "\n  0. %s\n" "$(t back)"
+    printf "\n  %s" "$(t select_list)"
     read choice </dev/tty
 
     local target=""
@@ -506,57 +502,57 @@ action_edit_lists() {
     esac
 
     if [ ! -f "$target" ]; then
-        print_fail "File not found: $target"
-        printf "  Copy lists first using option 1 (Install Strategy)\n"
+        print_fail "$(printf "$(t file_not_found_fmt)" "$target")"
+        printf "  %s\n" "$(t copy_lists_first)"
         pause_prompt; return
     fi
 
-    print_info "Editing: $target"
+    print_info "$(printf "$(t editing_fmt)" "$target")"
     "$editor" "$target" </dev/tty >/dev/tty
-    printf "\n  File now has %d lines:\n" "$(wc -l < "$target")"
+    printf "\n  $(t file_lines_fmt)\n" "$(wc -l < "$target")"
     head -5 "$target" | sed 's/^/    /'
     [ "$(wc -l < "$target")" -gt 5 ] && printf "    ...\n"
     printf "\n"
-    print_info "Restart zapret to apply list changes"
+    print_info "$(t restart_to_apply)"
     pause_prompt
 }
 
 action_diagnostics() {
     clear
-    printf "\n  ${C_BOLD}DIAGNOSTICS${C_RESET}\n\n"
+    printf "\n  ${C_BOLD}%s${C_RESET}\n\n" "$(t h_diag)"
 
     if [ -n "$ZAPRET_BASE" ]; then
-        print_ok "ZAPRET_BASE: $ZAPRET_BASE"
+        print_ok "$(printf "$(t zb_fmt)" "$ZAPRET_BASE")"
     else
-        print_fail "ZAPRET_BASE not detected"
+        print_fail "$(t zb_not_detected)"
         pause_prompt; return
     fi
 
     local nfqws_bin="$ZAPRET_BASE/nfq/nfqws"
     if [ -x "$nfqws_bin" ]; then
-        print_ok "nfqws binary found: $nfqws_bin"
+        print_ok "$(printf "$(t nfqws_bin_found_fmt)" "$nfqws_bin")"
     else
         nfqws_bin=$(command -v nfqws 2>/dev/null)
         if [ -n "$nfqws_bin" ]; then
-            print_ok "nfqws found in PATH: $nfqws_bin"
+            print_ok "$(printf "$(t nfqws_in_path_fmt)" "$nfqws_bin")"
         else
-            print_fail "nfqws binary not found"
+            print_fail "$(t nfqws_bin_missing)"
         fi
     fi
 
     if [ -n "$CUSTOM_D" ]; then
-        print_ok "custom.d: $CUSTOM_D"
+        print_ok "$(printf "$(t customd_fmt)" "$CUSTOM_D")"
     else
-        print_fail "custom.d directory not found"
+        print_fail "$(t customd_missing)"
     fi
 
     printf "\n"
     for f in list-general.txt list-google.txt list-exclude.txt ipset-exclude.txt ipset-all.txt; do
         if [ -f "$ZAPRET_BASE/ipset/$f" ]; then
             local count=$(wc -l < "$ZAPRET_BASE/ipset/$f" 2>/dev/null)
-            print_ok "$f ($count entries)"
+            print_ok "$(printf "$(t file_entries_fmt)" "$f" "$count")"
         else
-            print_fail "$f missing from $ZAPRET_BASE/ipset/"
+            print_fail "$(printf "$(t file_missing_in_fmt)" "$f" "$ZAPRET_BASE/ipset/")"
         fi
     done
 
@@ -565,7 +561,7 @@ action_diagnostics() {
         if [ -f "$ZAPRET_BASE/files/fake/$f" ]; then
             print_ok "$f"
         else
-            print_fail "$f missing from $ZAPRET_BASE/files/fake/"
+            print_fail "$(printf "$(t file_missing_in_fmt)" "$f" "$ZAPRET_BASE/files/fake/")"
         fi
     done
 
@@ -573,33 +569,33 @@ action_diagnostics() {
     local nfq_count=$(pidof nfqws 2>/dev/null | wc -w | tr -d ' ')
     [ -z "$nfq_count" ] && nfq_count=0
     if [ "$nfq_count" -gt 0 ] 2>/dev/null; then
-        print_ok "nfqws process running ($nfq_count instance(s))"
+        print_ok "$(printf "$(t nfqws_proc_running_fmt)" "$nfq_count")"
     else
-        print_fail "nfqws process not running"
+        print_fail "$(t nfqws_proc_not_running)"
     fi
 
     printf "\n"
     if command -v iptables >/dev/null 2>&1; then
         if iptables -t mangle -L -n 2>/dev/null | grep -q NFQUEUE; then
-            print_ok "iptables NFQUEUE rules found"
+            print_ok "$(t iptables_found)"
         else
-            print_warn "No iptables NFQUEUE rules found (might use nftables)"
+            print_warn "$(t iptables_missing)"
         fi
     fi
     if command -v nft >/dev/null 2>&1; then
         if nft list ruleset 2>/dev/null | grep -q queue; then
-            print_ok "nftables queue rules found"
+            print_ok "$(t nftables_found)"
         else
-            print_warn "No nftables queue rules found"
+            print_warn "$(t nftables_missing)"
         fi
     fi
 
     printf "\n"
     get_active_strategy
     if [ "$ACTIVE_STRATEGY" != "none" ]; then
-        print_ok "Active strategy: $ACTIVE_STRATEGY"
+        print_ok "$(printf "$(t active_strategy_fmt)" "$ACTIVE_STRATEGY")"
     else
-        print_warn "No discord-youtube strategy installed in custom.d"
+        print_warn "$(t no_strategy_in_customd)"
     fi
 
     if [ -n "$CUSTOM_D" ]; then
@@ -612,7 +608,7 @@ action_diagnostics() {
             esac
         done
         if [ -n "$others" ]; then
-            print_warn "Other custom.d scripts found:$others"
+            print_warn "$(printf "$(t other_customd_fmt)" "$others")"
         fi
     fi
 
