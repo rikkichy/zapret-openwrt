@@ -274,6 +274,42 @@ get_strat_name() {
     eval "echo \"\$STRAT_NAME_$1\""
 }
 
+nfqws_describe() {
+    local pids
+    pids=$(pidof nfqws 2>/dev/null)
+    [ -z "$pids" ] && { echo "none"; return; }
+
+    local n_pids=0 n_parents=0 parent_pid=""
+    for pid in $pids; do
+        n_pids=$((n_pids + 1))
+        local ppid
+        ppid=$(awk '/^PPid:/ {print $2; exit}' "/proc/$pid/status" 2>/dev/null)
+        local is_child=0
+        for other in $pids; do
+            [ "$other" = "$ppid" ] && { is_child=1; break; }
+        done
+        if [ "$is_child" = "0" ]; then
+            n_parents=$((n_parents + 1))
+            parent_pid="$pid"
+        fi
+    done
+
+    if [ "$n_pids" = "1" ]; then
+        echo "single $pids"
+    elif [ "$n_parents" = "1" ] && [ "$n_pids" = "2" ]; then
+        local worker=""
+        for pid in $pids; do
+            [ "$pid" = "$parent_pid" ] || worker="$pid"
+        done
+        echo "pair $parent_pid $worker"
+    elif [ "$n_parents" = "1" ]; then
+        local n_workers=$((n_pids - 1))
+        echo "complex $parent_pid $n_workers"
+    else
+        echo "multi $n_parents"
+    fi
+}
+
 copy_lists() {
     local src="$SCRIPT_DIR/lists"
     local dst="$ZAPRET_BASE/ipset"
@@ -430,13 +466,24 @@ action_status() {
     clear
     printf "\n  ${C_BOLD}%s${C_RESET}\n\n" "$(t h_status)"
 
-    local nfq_count=$(pidof nfqws 2>/dev/null | wc -w | tr -d ' ')
-    [ -z "$nfq_count" ] && nfq_count=0
-    if [ "$nfq_count" -gt 0 ] 2>/dev/null; then
-        print_ok "$(printf "$(t nfqws_running_fmt)" "$nfq_count")"
-    else
-        print_fail "$(t nfqws_not_running)"
-    fi
+    set -- $(nfqws_describe)
+    case "$1" in
+        none)
+            print_fail "$(t nfqws_not_running)"
+            ;;
+        single)
+            print_ok "$(printf "$(t nfqws_running_one_pid_fmt)" "$2")"
+            ;;
+        pair)
+            print_ok "$(printf "$(t nfqws_running_pair_fmt)" "$2" "$3")"
+            ;;
+        complex)
+            print_ok "$(printf "$(t nfqws_running_complex_fmt)" "$2" "$3")"
+            ;;
+        multi)
+            print_ok "$(printf "$(t nfqws_running_multi_fmt)" "$2")"
+            ;;
+    esac
 
     get_active_strategy
     if [ "$ACTIVE_STRATEGY" = "none" ]; then
@@ -566,13 +613,24 @@ action_diagnostics() {
     done
 
     printf "\n"
-    local nfq_count=$(pidof nfqws 2>/dev/null | wc -w | tr -d ' ')
-    [ -z "$nfq_count" ] && nfq_count=0
-    if [ "$nfq_count" -gt 0 ] 2>/dev/null; then
-        print_ok "$(printf "$(t nfqws_proc_running_fmt)" "$nfq_count")"
-    else
-        print_fail "$(t nfqws_proc_not_running)"
-    fi
+    set -- $(nfqws_describe)
+    case "$1" in
+        none)
+            print_fail "$(t nfqws_not_running)"
+            ;;
+        single)
+            print_ok "$(printf "$(t nfqws_running_one_pid_fmt)" "$2")"
+            ;;
+        pair)
+            print_ok "$(printf "$(t nfqws_running_pair_fmt)" "$2" "$3")"
+            ;;
+        complex)
+            print_ok "$(printf "$(t nfqws_running_complex_fmt)" "$2" "$3")"
+            ;;
+        multi)
+            print_ok "$(printf "$(t nfqws_running_multi_fmt)" "$2")"
+            ;;
+    esac
 
     printf "\n"
     if command -v iptables >/dev/null 2>&1; then
