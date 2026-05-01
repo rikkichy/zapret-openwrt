@@ -658,6 +658,7 @@ action_uninstall() {
     printf "\n  ${C_BOLD}%s${C_RESET}\n\n" "$(t uninstall_title)"
     print_info "$(t uninstall_will)"
     print_info "$(t uninstall_stop)"
+    print_info "$(t uninstall_strategy)"
     print_info "$(t uninstall_wipe)"
     print_info "$(t uninstall_unlink)"
     printf "\n"
@@ -676,6 +677,20 @@ action_uninstall() {
         print_ok "$(t stopped)"
     else
         print_info "$(t no_init)"
+    fi
+
+    # Remove active discord-youtube strategy from custom.d/
+    if [ -n "$CUSTOM_D" ] && [ -d "$CUSTOM_D" ]; then
+        local removed_any=0
+        for f in "$CUSTOM_D"/50-discord-youtube*; do
+            [ -f "$f" ] || continue
+            rm -f "$f" 2>/dev/null && removed_any=1
+        done
+        if [ "$removed_any" = "1" ]; then
+            print_ok "$(t strategy_removed)"
+        else
+            print_info "$(t no_strategy_to_remove)"
+        fi
     fi
 
     # Remove the /usr/bin/zapret symlink
