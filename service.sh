@@ -132,6 +132,43 @@ fetch_url() {
     fi
 }
 
+# --- 'zapret' command registration ---
+# /tmp/zapret-openwrt vanishes on reboot, so copy the script tree to a
+# persistent location and create /usr/bin/zapret -> persistent service.sh
+PERSIST_DIR="/usr/lib/zapret-openwrt"
+SYMLINK_PATH="/usr/bin/zapret"
+
+register_command() {
+    # Only fire when running from /tmp (i.e. fresh install or update via install.sh)
+    case "$SCRIPT_DIR" in
+        /tmp/zapret-openwrt|/tmp/zapret-openwrt/*) ;;
+        *) return 0 ;;
+    esac
+
+    print_info "$(t cmd_registering)"
+
+    # Copy script tree to a persistent location (idempotent — overwrites prior install)
+    rm -rf "$PERSIST_DIR" 2>/dev/null
+    if ! mkdir -p "$PERSIST_DIR" 2>/dev/null; then
+        print_warn "$(t cmd_register_fail)"
+        return 1
+    fi
+    if ! cp -r "$SCRIPT_DIR"/. "$PERSIST_DIR/" 2>/dev/null; then
+        print_warn "$(t cmd_register_fail)"
+        return 1
+    fi
+    chmod +x "$PERSIST_DIR/service.sh" 2>/dev/null
+
+    # Create / refresh symlink
+    if ! ln -sf "$PERSIST_DIR/service.sh" "$SYMLINK_PATH" 2>/dev/null; then
+        print_warn "$(t cmd_register_fail)"
+        return 1
+    fi
+
+    print_ok "$(t cmd_registered)"
+    return 0
+}
+
 ZAPRET_VERSION="v72.12"
 ZAPRET_TARBALL_URL="https://github.com/bol-van/zapret/releases/download/${ZAPRET_VERSION}/zapret-${ZAPRET_VERSION}-openwrt-embedded.tar.gz"
 
@@ -622,6 +659,7 @@ action_uninstall() {
     print_info "$(t uninstall_will)"
     print_info "$(t uninstall_stop)"
     print_info "$(t uninstall_wipe)"
+    print_info "$(t uninstall_unlink)"
     printf "\n"
     print_warn "$(t uninstall_warn)"
     printf "\n  %s" "$(t uninstall_proceed)"
@@ -640,6 +678,19 @@ action_uninstall() {
         print_info "$(t no_init)"
     fi
 
+    # Remove the /usr/bin/zapret symlink
+    if [ -L "$SYMLINK_PATH" ] || [ -e "$SYMLINK_PATH" ]; then
+        rm -f "$SYMLINK_PATH" 2>/dev/null
+        print_ok "$(printf "$(t path_removed_fmt)" "$SYMLINK_PATH")"
+    fi
+
+    # Remove the persistent install (/usr/lib/zapret-openwrt)
+    if [ -d "$PERSIST_DIR" ]; then
+        rm -rf "$PERSIST_DIR" 2>/dev/null
+        print_ok "$(printf "$(t path_removed_fmt)" "$PERSIST_DIR")"
+    fi
+
+    # Remove the /tmp copy (if present)
     if [ -d "/tmp/zapret-openwrt" ]; then
         print_info "$(t removing)"
         rm -rf "/tmp/zapret-openwrt"
@@ -735,6 +786,7 @@ main_menu() {
     load_language
     pick_language
     load_locale
+    register_command
 
     detect_zapret_base
 

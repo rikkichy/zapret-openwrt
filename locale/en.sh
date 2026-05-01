@@ -65,6 +65,15 @@ T_removed="Removed"
 T_nothing_remove="/tmp/zapret-openwrt not present (nothing to remove)"
 T_uninstall_done="Uninstall complete. Exiting."
 
+# ---- command registration ----
+T_cmd_registering="Registering 'zapret' command..."
+T_cmd_registered="Done — type 'zapret' anytime to open this menu"
+T_cmd_register_fail="Could not register 'zapret' command (need root / write access to /usr/bin and /usr/lib)"
+
+# ---- uninstall extras ----
+T_uninstall_unlink="  - Remove /usr/bin/zapret symlink and /usr/lib/zapret-openwrt"
+T_path_removed_fmt="Removed: %s"
+
 # ---- common ----
 T_press_enter="Press Enter to continue..."
 T_no_zapret_base="ZAPRET_BASE not found! Is zapret installed?"

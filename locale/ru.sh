@@ -65,6 +65,15 @@ T_removed="Удалено"
 T_nothing_remove="/tmp/zapret-openwrt отсутствует (удалять нечего)"
 T_uninstall_done="Удаление завершено. Выход."
 
+# ---- command registration ----
+T_cmd_registering="Регистрирую команду 'zapret'..."
+T_cmd_registered="Готово — вводите 'zapret' для запуска меню в любой момент"
+T_cmd_register_fail="Не удалось зарегистрировать команду 'zapret' (нужны права root / запись в /usr/bin и /usr/lib)"
+
+# ---- uninstall extras ----
+T_uninstall_unlink="  - Удалить ссылку /usr/bin/zapret и /usr/lib/zapret-openwrt"
+T_path_removed_fmt="Удалено: %s"
+
 # ---- common ----
 T_press_enter="Нажмите Enter для продолжения..."
 T_no_zapret_base="ZAPRET_BASE не найден! zapret установлен?"
