@@ -42,7 +42,7 @@ zapret_custom_firewall()
 			fw_nfqws_post $1 "$f4" "$f6" $QNUM_DSCYT
 		}
 		[ -n "$NFQWS_DSCYT_TCP_PKT_IN" -a "$NFQWS_DSCYT_TCP_PKT_IN" != 0 ] && {
-			f4="-p tcp -m multiport --sports $ports_tcp $ipt_connbytes 1:$NFQWS_DSCYT_TCP_PKT_IN"
+			f4="-p tcp -m multiport --sports $ports_tcp -m connbytes --connbytes-dir=reply --connbytes-mode=packets --connbytes 1:$NFQWS_DSCYT_TCP_PKT_IN"
 			f6="$f4"
 			fw_nfqws_pre $1 "$f4" "$f6" $QNUM_DSCYT
 		}
@@ -54,7 +54,7 @@ zapret_custom_firewall()
 			fw_nfqws_post $1 "$f4" "$f6" $QNUM_DSCYT
 		}
 		[ -n "$NFQWS_DSCYT_UDP_PKT_IN" -a "$NFQWS_DSCYT_UDP_PKT_IN" != 0 ] && {
-			f4="-p udp -m multiport --sports $ports_udp $ipt_connbytes 1:$NFQWS_DSCYT_UDP_PKT_IN"
+			f4="-p udp -m multiport --sports $ports_udp -m connbytes --connbytes-dir=reply --connbytes-mode=packets --connbytes 1:$NFQWS_DSCYT_UDP_PKT_IN"
 			f6="$f4"
 			fw_nfqws_pre $1 "$f4" "$f6" $QNUM_DSCYT
 		}
@@ -72,7 +72,7 @@ zapret_custom_firewall_nft()
 			nft_fw_nfqws_post $1 "$f" "$f" $QNUM_DSCYT
 		}
 		[ -n "$NFQWS_DSCYT_TCP_PKT_IN" -a "$NFQWS_DSCYT_TCP_PKT_IN" != 0 ] && {
-			f="tcp sport {$NFQWS_DSCYT_PORTS_TCP} $(nft_first_packets $NFQWS_DSCYT_TCP_PKT_IN)"
+			f="tcp sport {$NFQWS_DSCYT_PORTS_TCP} ct reply packets 1-$NFQWS_DSCYT_TCP_PKT_IN"
 			nft_fw_nfqws_pre $1 "$f" "$f" $QNUM_DSCYT
 		}
 	}
@@ -82,7 +82,7 @@ zapret_custom_firewall_nft()
 			nft_fw_nfqws_post $1 "$f" "$f" $QNUM_DSCYT
 		}
 		[ -n "$NFQWS_DSCYT_UDP_PKT_IN" -a "$NFQWS_DSCYT_UDP_PKT_IN" != 0 ] && {
-			f="udp sport {$NFQWS_DSCYT_PORTS_UDP} $(nft_first_packets $NFQWS_DSCYT_UDP_PKT_IN)"
+			f="udp sport {$NFQWS_DSCYT_PORTS_UDP} ct reply packets 1-$NFQWS_DSCYT_UDP_PKT_IN"
 			nft_fw_nfqws_pre $1 "$f" "$f" $QNUM_DSCYT
 		}
 	}
