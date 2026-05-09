@@ -92,29 +92,15 @@ systemctl restart zapret2
 
 ## Available Strategies
 
-Start with `50-discord-youtube` (general). If it doesn't work for your ISP, try alternatives. Behavior is described in v2 terms (`--lua-desync=fn:args`):
+Three strategies, all confirmed working under zapret v1 in real Russian-DPI deployments. Behavior is described in v2 terms (`--lua-desync=fn:args`):
 
 | File | Description |
 |------|-------------|
-| `50-discord-youtube` | **Default.** TCP `multisplit` with sequence overlap (seqovl=681) |
-| `50-discord-youtube-alt1` | `fake` + `fakedsplit`, `tcp_ts=10000` fooling, zero pattern |
-| `50-discord-youtube-alt2` | `multisplit`, seqovl=652, pos=3 |
-| `50-discord-youtube-alt3` | `fake` + `hostfakesplit` with SNI spoofing (`tls_mod`) |
-| `50-discord-youtube-alt4` | `fake` + `multisplit`, `tcp_seq=1000` fooling |
-| `50-discord-youtube-alt5` | `syndata` + `multidisorder` (NOT RECOMMENDED — IPv4 only, simplified) |
-| `50-discord-youtube-alt6` | `multisplit`, seqovl=681, uses google pattern for general TCP |
-| `50-discord-youtube-alt7` | `multisplit`, pos=`3,sniext+1` (multi-pos), seqovl=679; `syndata` for catch-all |
-| `50-discord-youtube-alt8` | `fake` only, `tcp_seq=2` fooling |
-| `50-discord-youtube-alt9` | `hostfakesplit`, `tcp_ts=10000` (+ `tcp_md5` on general) |
-| `50-discord-youtube-alt10` | `fake` with multiple TLS blobs, `tcp_ts=10000` |
-| `50-discord-youtube-alt11` | `fake` + `multisplit`, high repeats (8-11), `tcp_ts=10000` |
-| `50-discord-youtube-simple-fake` | Simple `fake` packets, `tcp_ts=10000` |
-| `50-discord-youtube-simple-fake-alt1` | Simple `fake`, `tcp_seq=2` |
-| `50-discord-youtube-simple-fake-alt2` | Simple `fake`, `tcp_ts=10000` (variant) |
-| `50-discord-youtube-faketls` | TLS fakes with SNI spoofing + `multidisorder`, `tcp_seq=-10000` |
-| `50-discord-youtube-faketls-alt1` | TLS fakes with SNI spoofing + `fakedsplit`, `tcp_seq=2` |
-| `50-discord-youtube-faketls-alt2` | TLS fakes + `multisplit`+seqovl, `tcp_seq=10000000` |
-| `50-discord-youtube-faketls-alt3` | TLS fakes + `multisplit`+seqovl, `tcp_ts=10000` |
+| `50-discord-youtube-alt1` | `fake` + `fakedsplit`, `tcp_ts=-600000` (PAWS) fooling, zero pattern |
+| `50-discord-youtube-alt11` | `fake` + `multisplit`+seqovl, high repeats (8-11), `tcp_ts=-600000` |
+| `50-discord-youtube-simple-fake-alt2` | Simple `fake` packets, `tcp_ts=-600000` |
+
+All three set `ip_autottl=-1,3-20` on every fake call, matching v1's default auto-TTL behavior.
 
 ## Switching Strategies
 
