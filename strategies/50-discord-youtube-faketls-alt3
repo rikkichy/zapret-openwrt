@@ -1,19 +1,23 @@
 
 NFQWS_DSCYT_PORTS_TCP="${NFQWS_DSCYT_PORTS_TCP:-80,443,2053,2083,2087,2096,8443}"
 NFQWS_DSCYT_PORTS_UDP="${NFQWS_DSCYT_PORTS_UDP:-443,19294-19344,50000-50100}"
-NFQWS_DSCYT_TCP_PKT_OUT="${NFQWS_DSCYT_TCP_PKT_OUT:-$NFQWS_TCP_PKT_OUT}"
-NFQWS_DSCYT_TCP_PKT_IN="${NFQWS_DSCYT_TCP_PKT_IN:-$NFQWS_TCP_PKT_IN}"
-NFQWS_DSCYT_UDP_PKT_OUT="${NFQWS_DSCYT_UDP_PKT_OUT:-$NFQWS_UDP_PKT_OUT}"
+NFQWS_DSCYT_TCP_PKT_OUT="${NFQWS_DSCYT_TCP_PKT_OUT:-${NFQWS2_TCP_PKT_OUT:-$NFQWS_TCP_PKT_OUT}}"
+NFQWS_DSCYT_TCP_PKT_IN="${NFQWS_DSCYT_TCP_PKT_IN:-${NFQWS2_TCP_PKT_IN:-$NFQWS_TCP_PKT_IN}}"
+NFQWS_DSCYT_UDP_PKT_OUT="${NFQWS_DSCYT_UDP_PKT_OUT:-${NFQWS2_UDP_PKT_OUT:-$NFQWS_UDP_PKT_OUT}}"
 NFQWS_DSCYT_UDP_PKT_IN="${NFQWS_DSCYT_UDP_PKT_IN:-0}"
 
 NFQWS_DSCYT_OPT="${NFQWS_DSCYT_OPT:-
- --filter-udp=443 --hostlist=$ZAPRET_BASE/ipset/list-general.txt --hostlist-exclude=$ZAPRET_BASE/ipset/list-exclude.txt --ipset-exclude=$ZAPRET_BASE/ipset/ipset-exclude.txt --dpi-desync=fake --dpi-desync-repeats=11 --dpi-desync-fake-quic=$ZAPRET_BASE/files/fake/quic_initial_www_google_com.bin --new
- --filter-udp=19294-19344,50000-50100 --filter-l7=discord,stun --dpi-desync=fake --dpi-desync-fake-discord=$ZAPRET_BASE/files/fake/quic_initial_dbankcloud_ru.bin --dpi-desync-fake-stun=$ZAPRET_BASE/files/fake/quic_initial_dbankcloud_ru.bin --dpi-desync-repeats=6 --new
- --filter-tcp=2053,2083,2087,2096,8443 --hostlist-domains=discord.media --dpi-desync=fake,multisplit --dpi-desync-split-seqovl=681 --dpi-desync-split-pos=1 --dpi-desync-fooling=ts --dpi-desync-repeats=8 --dpi-desync-split-seqovl-pattern=$ZAPRET_BASE/files/fake/tls_clienthello_www_google_com.bin --dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com --new
- --filter-tcp=443 --hostlist=$ZAPRET_BASE/ipset/list-google.txt --ip-id=zero --dpi-desync=fake,multisplit --dpi-desync-split-seqovl=681 --dpi-desync-split-pos=1 --dpi-desync-fooling=ts --dpi-desync-repeats=8 --dpi-desync-split-seqovl-pattern=$ZAPRET_BASE/files/fake/tls_clienthello_www_google_com.bin --dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com --new
- --filter-tcp=80,443 --hostlist=$ZAPRET_BASE/ipset/list-general.txt --hostlist-exclude=$ZAPRET_BASE/ipset/list-exclude.txt --ipset-exclude=$ZAPRET_BASE/ipset/ipset-exclude.txt --dpi-desync=fake,multisplit --dpi-desync-split-seqovl=681 --dpi-desync-split-pos=1 --dpi-desync-fooling=ts --dpi-desync-repeats=8 --dpi-desync-split-seqovl-pattern=$ZAPRET_BASE/files/fake/tls_clienthello_www_google_com.bin --dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com --dpi-desync-fake-http=$ZAPRET_BASE/files/fake/tls_clienthello_max_ru.bin --new
- --filter-udp=443 --ipset=$ZAPRET_BASE/ipset/ipset-all.txt --hostlist-exclude=$ZAPRET_BASE/ipset/list-exclude.txt --ipset-exclude=$ZAPRET_BASE/ipset/ipset-exclude.txt --dpi-desync=fake --dpi-desync-repeats=11 --dpi-desync-fake-quic=$ZAPRET_BASE/files/fake/quic_initial_www_google_com.bin --new
- --filter-tcp=80,443,8443 --ipset=$ZAPRET_BASE/ipset/ipset-all.txt --hostlist-exclude=$ZAPRET_BASE/ipset/list-exclude.txt --ipset-exclude=$ZAPRET_BASE/ipset/ipset-exclude.txt --dpi-desync=fake,multisplit --dpi-desync-split-seqovl=681 --dpi-desync-split-pos=1 --dpi-desync-fooling=ts --dpi-desync-repeats=8 --dpi-desync-split-seqovl-pattern=$ZAPRET_BASE/files/fake/tls_clienthello_www_google_com.bin --dpi-desync-fake-tls-mod=rnd,dupsid,sni=www.google.com --dpi-desync-fake-http=$ZAPRET_BASE/files/fake/tls_clienthello_max_ru.bin}"
+ --blob=quic_google:@$ZAPRET_BASE/files/fake/quic_initial_www_google_com.bin
+ --blob=tls_google:@$ZAPRET_BASE/files/fake/tls_clienthello_www_google_com.bin
+ --blob=quic_dbankcloud:@$ZAPRET_BASE/files/fake/quic_initial_dbankcloud_ru.bin
+ --blob=tls_max_ru:@$ZAPRET_BASE/files/fake/tls_clienthello_max_ru.bin
+ --filter-udp=443 --hostlist=$ZAPRET_BASE/ipset/list-general.txt --hostlist-exclude=$ZAPRET_BASE/ipset/list-exclude.txt --ipset-exclude=$ZAPRET_BASE/ipset/ipset-exclude.txt --lua-desync=fake:blob=quic_google:repeats=11 --new
+ --filter-udp=19294-19344,50000-50100 --filter-l7=discord,stun --lua-desync=fake:blob=quic_dbankcloud:repeats=6 --new
+ --filter-tcp=2053,2083,2087,2096,8443 --hostlist-domains=discord.media --lua-desync=fake:blob=tls_google:tls_mod=rnd,dupsid,sni=www.google.com:repeats=8:tcp_ts=10000 --lua-desync=multisplit:pos=2:seqovl=681:seqovl_pattern=tls_google --new
+ --filter-tcp=443 --hostlist=$ZAPRET_BASE/ipset/list-google.txt --lua-desync=fake:blob=tls_google:tls_mod=rnd,dupsid,sni=www.google.com:repeats=8:tcp_ts=10000:ip_id=zero --lua-desync=multisplit:pos=2:seqovl=681:seqovl_pattern=tls_google:ip_id=zero --new
+ --filter-tcp=80,443 --hostlist=$ZAPRET_BASE/ipset/list-general.txt --hostlist-exclude=$ZAPRET_BASE/ipset/list-exclude.txt --ipset-exclude=$ZAPRET_BASE/ipset/ipset-exclude.txt --lua-desync=fake:blob=tls_google:tls_mod=rnd,dupsid,sni=www.google.com:repeats=8:tcp_ts=10000 --lua-desync=fake:blob=tls_max_ru:repeats=8:tcp_ts=10000 --lua-desync=multisplit:pos=2:seqovl=681:seqovl_pattern=tls_google --new
+ --filter-udp=443 --ipset=$ZAPRET_BASE/ipset/ipset-all.txt --hostlist-exclude=$ZAPRET_BASE/ipset/list-exclude.txt --ipset-exclude=$ZAPRET_BASE/ipset/ipset-exclude.txt --lua-desync=fake:blob=quic_google:repeats=11 --new
+ --filter-tcp=80,443,8443 --ipset=$ZAPRET_BASE/ipset/ipset-all.txt --hostlist-exclude=$ZAPRET_BASE/ipset/list-exclude.txt --ipset-exclude=$ZAPRET_BASE/ipset/ipset-exclude.txt --lua-desync=fake:blob=tls_google:tls_mod=rnd,dupsid,sni=www.google.com:repeats=8:tcp_ts=10000 --lua-desync=fake:blob=tls_max_ru:repeats=8:tcp_ts=10000 --lua-desync=multisplit:pos=2:seqovl=681:seqovl_pattern=tls_google}"
 
 alloc_dnum DNUM_DSCYT
 alloc_qnum QNUM_DSCYT

@@ -79,7 +79,7 @@ detect_zapret_base() {
     if [ -n "$ZAPRET_BASE" ] && [ -d "$ZAPRET_BASE" ]; then
         return 0
     fi
-    for d in /opt/zapret /usr/lib/zapret /etc/zapret; do
+    for d in /opt/zapret2 /usr/lib/zapret2 /etc/zapret2 /opt/zapret /usr/lib/zapret /etc/zapret; do
         if [ -d "$d" ] && [ -f "$d/config" -o -f "$d/config.default" ]; then
             ZAPRET_BASE="$d"
             return 0
@@ -103,9 +103,20 @@ detect_custom_d() {
 detect_init_system() {
     INIT_TYPE=""
     INIT_SCRIPT=""
-    if [ -x "/etc/init.d/zapret" ]; then
+    SYSTEMD_UNIT=""
+    if [ -x "/etc/init.d/zapret2" ]; then
+        INIT_TYPE="initd"
+        INIT_SCRIPT="/etc/init.d/zapret2"
+    elif [ -x "/etc/init.d/zapret" ]; then
         INIT_TYPE="initd"
         INIT_SCRIPT="/etc/init.d/zapret"
+    elif [ -n "$ZAPRET_BASE" ] && [ -x "$ZAPRET_BASE/init.d/openwrt/zapret2" ]; then
+        INIT_TYPE="initd"
+        INIT_SCRIPT="$ZAPRET_BASE/init.d/openwrt/zapret2"
+    elif [ -n "$ZAPRET_BASE" ] && [ -f "$ZAPRET_BASE/init.d/openwrt/zapret2" ]; then
+        INIT_TYPE="initd"
+        INIT_SCRIPT="$ZAPRET_BASE/init.d/openwrt/zapret2"
+        chmod +x "$INIT_SCRIPT"
     elif [ -n "$ZAPRET_BASE" ] && [ -x "$ZAPRET_BASE/init.d/openwrt/zapret" ]; then
         INIT_TYPE="initd"
         INIT_SCRIPT="$ZAPRET_BASE/init.d/openwrt/zapret"
@@ -113,8 +124,15 @@ detect_init_system() {
         INIT_TYPE="initd"
         INIT_SCRIPT="$ZAPRET_BASE/init.d/openwrt/zapret"
         chmod +x "$INIT_SCRIPT"
+    elif command -v systemctl >/dev/null 2>&1 && systemctl list-unit-files zapret2.service >/dev/null 2>&1; then
+        INIT_TYPE="systemd"
+        SYSTEMD_UNIT="zapret2"
     elif command -v systemctl >/dev/null 2>&1 && systemctl list-unit-files zapret.service >/dev/null 2>&1; then
         INIT_TYPE="systemd"
+        SYSTEMD_UNIT="zapret"
+    elif [ -n "$ZAPRET_BASE" ] && [ -x "$ZAPRET_BASE/init.d/sysv/zapret2" ]; then
+        INIT_TYPE="sysv"
+        INIT_SCRIPT="$ZAPRET_BASE/init.d/sysv/zapret2"
     elif [ -n "$ZAPRET_BASE" ] && [ -x "$ZAPRET_BASE/init.d/sysv/zapret" ]; then
         INIT_TYPE="sysv"
         INIT_SCRIPT="$ZAPRET_BASE/init.d/sysv/zapret"
@@ -164,17 +182,43 @@ register_command() {
     return 0
 }
 
-ZAPRET_VERSION="v72.12"
-ZAPRET_TARBALL_URL="https://github.com/bol-van/zapret/releases/download/${ZAPRET_VERSION}/zapret-${ZAPRET_VERSION}-openwrt-embedded.tar.gz"
+ZAPRET2_REPO="bol-van/zapret2"
+ZAPRET2_VERSION_FALLBACK="v0.9.5.2"
+
+resolve_zapret2_release() {
+    local api_url="https://api.github.com/repos/${ZAPRET2_REPO}/releases/latest"
+    local tmp_json="/tmp/zapret2-latest.$$.json"
+
+    if [ -n "$ZAPRET2_VERSION" ]; then
+        ZAPRET2_TAG="$ZAPRET2_VERSION"
+        ZAPRET2_TARBALL_URL="https://github.com/${ZAPRET2_REPO}/releases/download/${ZAPRET2_TAG}/zapret2-${ZAPRET2_TAG}-openwrt-embedded.tar.gz"
+        return 0
+    fi
+
+    if fetch_url "$api_url" "$tmp_json" 2>/dev/null; then
+        ZAPRET2_TARBALL_URL=$(grep -o '"browser_download_url":[[:space:]]*"[^"]*-openwrt-embedded\.tar\.gz"' "$tmp_json" | head -1 | sed 's/.*"browser_download_url":[[:space:]]*"//; s/"$//')
+        ZAPRET2_TAG=$(grep -o '"tag_name":[[:space:]]*"[^"]*"' "$tmp_json" | head -1 | sed 's/.*"tag_name":[[:space:]]*"//; s/"$//')
+        rm -f "$tmp_json"
+        if [ -n "$ZAPRET2_TARBALL_URL" ] && [ -n "$ZAPRET2_TAG" ]; then
+            return 0
+        fi
+    fi
+    rm -f "$tmp_json"
+
+    ZAPRET2_TAG="$ZAPRET2_VERSION_FALLBACK"
+    ZAPRET2_TARBALL_URL="https://github.com/${ZAPRET2_REPO}/releases/download/${ZAPRET2_TAG}/zapret2-${ZAPRET2_TAG}-openwrt-embedded.tar.gz"
+    return 0
+}
 
 install_zapret_base() {
     local tmpdir="/tmp/zapret-base-install.$$"
     local archive="$tmpdir/zapret.tar.gz"
 
-    print_info "$(printf "$(t base_downloading)" "$ZAPRET_VERSION")"
+    resolve_zapret2_release
+    print_info "$(printf "$(t base_downloading)" "$ZAPRET2_TAG")"
     rm -rf "$tmpdir"; mkdir -p "$tmpdir"
 
-    if ! fetch_url "$ZAPRET_TARBALL_URL" "$archive"; then
+    if ! fetch_url "$ZAPRET2_TARBALL_URL" "$archive"; then
         print_fail "$(t base_download_fail)"
         rm -rf "$tmpdir"
         return 1
@@ -230,7 +274,7 @@ install_zapret_base() {
 zapret_cmd() {
     case "$INIT_TYPE" in
         initd|sysv) "$INIT_SCRIPT" "$1" ;;
-        systemd)    systemctl "$1" zapret ;;
+        systemd)    systemctl "$1" "${SYSTEMD_UNIT:-zapret2}" ;;
         *)
             print_fail "$(t init_script_missing)"
             print_info "$(printf "$(t init_searched_fmt)" "$ZAPRET_BASE")"
@@ -276,7 +320,7 @@ get_strat_name() {
 
 nfqws_describe() {
     local pids
-    pids=$(pidof nfqws 2>/dev/null)
+    pids=$(pidof nfqws2 2>/dev/null; pidof nfqws 2>/dev/null)
     [ -z "$pids" ] && { echo "none"; return; }
 
     local n_pids=0 n_parents=0 parent_pid=""
